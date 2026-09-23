@@ -12,6 +12,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { AnnouncementBar } from "@/components/announcement-bar";
+import { MobileMenu } from "@/components/mobile-menu";
 import { mainNavigation, products, collections } from "@/data/catalog";
 import { cartCount, useCart } from "@/store/cart";
 import { cn } from "@/lib/utils";
@@ -167,50 +168,38 @@ export function SiteHeader() {
           <div className="flex items-center gap-3 lg:hidden">
             <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
               <SheetTrigger asChild>
-                <button type="button" aria-label="Open menu" className="p-1.5">
+                <button
+                  type="button"
+                  aria-label="Open menu"
+                  className="-ml-2 rounded-full p-2.5 transition-colors hover:bg-meta"
+                >
                   <Menu size={22} strokeWidth={1.6} />
                 </button>
               </SheetTrigger>
-              <SheetContent side="left" className="w-[86vw] max-w-sm overflow-y-auto">
-                <SheetHeader>
-                  <SheetTitle className="font-logo text-2xl">BRIKE</SheetTitle>
+              <SheetContent
+                side="left"
+                className="w-[86vw] max-w-sm gap-0 overflow-y-auto p-0"
+              >
+                <SheetHeader className="border-b border-border px-5 pt-5 pr-14 pb-4">
+                  <SheetTitle className="font-logo text-[26px] leading-none">
+                    BRIKE
+                  </SheetTitle>
+                  <p className="text-[10.5px] font-semibold tracking-[0.22em] text-muted-foreground uppercase">
+                    Menu
+                  </p>
                 </SheetHeader>
-                <nav className="flex flex-col gap-1">
-                  {mainNavigation.map((item) => (
-                    <div key={item.label} className="border-b border-border py-2">
-                      <Link
-                        href={item.href}
-                        onClick={() => setMobileOpen(false)}
-                        className="block py-1.5 font-heading text-h5"
-                      >
-                        {item.label}
-                      </Link>
-                      {item.columns.map((col) => (
-                        <div key={col.heading} className="mt-1.5 pl-1">
-                          <p className="text-[11px] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
-                            {col.heading}
-                          </p>
-                          {col.links.map((l) => (
-                            <Link
-                              key={l.label}
-                              href={l.href}
-                              onClick={() => setMobileOpen(false)}
-                              className="block py-1 text-[15px] text-foreground/85"
-                            >
-                              {l.label}
-                            </Link>
-                          ))}
-                        </div>
-                      ))}
-                    </div>
-                  ))}
-                </nav>
-                <div className="mt-4 flex flex-col gap-2 border-t border-border pt-4 text-[14px] text-muted-foreground">
-                  <Link href="/contact" onClick={() => setMobileOpen(false)}>
-                    Contact us
-                  </Link>
-                  <span>Free UK delivery over £60</span>
-                </div>
+                <MobileMenu
+                  count={count}
+                  onNavigate={() => setMobileOpen(false)}
+                  onSearch={() => {
+                    setMobileOpen(false);
+                    setSearchOpen(true);
+                  }}
+                  onCart={() => {
+                    setMobileOpen(false);
+                    openCart();
+                  }}
+                />
               </SheetContent>
             </Sheet>
           </div>
