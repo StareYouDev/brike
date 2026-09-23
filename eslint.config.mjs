@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Harness-owned skill scripts (CommonJS by design):
+    ".opencode/**",
   ]),
 ]);
 

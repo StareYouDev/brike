@@ -1,26 +1,225 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+@custom-variant dark (&:is(.dark *));
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+
+  /* ---- brand palette (inspired by theirnibs.com) ---- */
+  --color-ink: #1d1d1b;
+  --color-paper: #ffffff;
+  --color-cream: #f4ead9;
+  --color-peach: #f2c1ae;
+  --color-peach-deep: #e47e56;
+  --color-meta: #f5f5f5;
+  --color-line: #a5a5a1;
+  --color-sale: #d21404;
+  --color-navy: #16233c;
+  --color-forest: #435830;
+  --color-gold: #e8b64c;
+
+  /* ---- typography ---- */
+  --font-sans: var(--font-poppins);
+  --font-mono: ui-monospace, "SFMono-Regular", Menlo, monospace;
+  --font-heading: var(--font-instrument);
+  --font-serif: var(--font-instrument);
+  --font-logo: var(--font-worksans);
+
+  /* fluid display scale (mirrors the reference's clamp() ramp) */
+  --text-display-1: clamp(3.65625rem, 3.2289rem + 1.8232vw, 4.6875rem);
+  --text-display-1--line-height: 1.04;
+  --text-display-1--letter-spacing: -0.03em;
+  --text-display-2: clamp(3.2491875rem, 2.8694rem + 1.6202vw, 4.165625rem);
+  --text-display-2--line-height: 1.06;
+  --text-display-2--letter-spacing: -0.028em;
+  --text-display-3: clamp(2.8435875rem, 2.5113rem + 1.418vw, 3.645625rem);
+  --text-display-3--line-height: 1.08;
+  --text-display-3--letter-spacing: -0.026em;
+  --text-h1: clamp(2.4375rem, 2.1526rem + 1.2155vw, 3.125rem);
+  --text-h1--line-height: 1.1;
+  --text-h1--letter-spacing: -0.025em;
+  --text-h2: clamp(2.1328125rem, 1.8835rem + 1.0635vw, 2.734375rem);
+  --text-h2--line-height: 1.1;
+  --text-h2--letter-spacing: -0.025em;
+  --text-h3: clamp(1.828125rem, 1.6145rem + 0.9116vw, 2.34375rem);
+  --text-h3--line-height: 1.12;
+  --text-h3--letter-spacing: -0.022em;
+  --text-h4: clamp(1.4210625rem, 1.255rem + 0.7086vw, 1.821875rem);
+  --text-h4--line-height: 1.18;
+  --text-h4--letter-spacing: -0.018em;
+  --text-h5: clamp(1.21875rem, 1.0763rem + 0.6077vw, 1.5625rem);
+  --text-h5--line-height: 1.24;
+  --text-h5--letter-spacing: -0.015em;
+  --text-lead: clamp(1.1214rem, 1.097rem + 0.1043vw, 1.1804rem);
+  --text-lead--line-height: 1.55;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+:root {
+  --background: #ffffff;
+  --foreground: #1d1d1b;
+  --card: #ffffff;
+  --card-foreground: #1d1d1b;
+  --popover: #ffffff;
+  --popover-foreground: #1d1d1b;
+  --primary: #f2c1ae;
+  --primary-foreground: #1d1d1b;
+  --secondary: #f5f5f5;
+  --secondary-foreground: #1d1d1b;
+  --muted: #f5f5f5;
+  --muted-foreground: #6f6f6b;
+  --accent: #fdeee7;
+  --accent-foreground: #1d1d1b;
+  --destructive: #d02f2e;
+  --border: #e5e5e1;
+  --input: #c9c9c4;
+  --ring: #1d1d1b;
+  --chart-1: #f2c1ae;
+  --chart-2: #e47e56;
+  --chart-3: #435830;
+  --chart-4: #16233c;
+  --chart-5: #e8b64c;
+  --radius: 0.375rem;
+  --sidebar: #ffffff;
+  --sidebar-foreground: #1d1d1b;
+  --sidebar-primary: #1d1d1b;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #f5f5f5;
+  --sidebar-accent-foreground: #1d1d1b;
+  --sidebar-border: #e5e5e1;
+  --sidebar-ring: #1d1d1b;
+}
+
+.dark {
+  --background: #1d1d1b;
+  --foreground: #f4ead9;
+  --card: #1d1d1b;
+  --card-foreground: #f4ead9;
+  --popover: #1d1d1b;
+  --popover-foreground: #f4ead9;
+  --primary: #e47e56;
+  --primary-foreground: #1d1d1b;
+  --secondary: #2a2a27;
+  --secondary-foreground: #f4ead9;
+  --muted: #2a2a27;
+  --muted-foreground: #a5a5a1;
+  --accent: #33322e;
+  --accent-foreground: #f4ead9;
+  --destructive: #d02f2e;
+  --border: rgba(244, 234, 217, 0.14);
+  --input: rgba(244, 234, 217, 0.22);
+  --ring: #f2c1ae;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: var(--font-poppins);
+    font-size: 17px;
+    line-height: 1.5;
+    font-synthesis-weight: none;
+  }
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: var(--font-instrument);
+    font-weight: 400;
+    letter-spacing: -0.025em;
+    line-height: 1.1;
+  }
+  ::selection {
+    background: #f2c1ae;
+    color: #1d1d1b;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@layer utilities {
+  .font-logo {
+    font-family: var(--font-worksans);
+    letter-spacing: -0.02em;
+  }
+  .text-balance {
+    text-wrap: balance;
+  }
+}
+
+/* ---------- marquee ---------- */
+@keyframes marquee-x {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.marquee-track {
+  display: flex;
+  width: max-content;
+  animation: marquee-x var(--marquee-duration, 38s) linear infinite;
+}
+
+.marquee:hover .marquee-track {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .marquee-track {
+    animation: none;
+  }
+}
+
+/* ---------- misc ---------- */
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
 }

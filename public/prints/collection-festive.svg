@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="900" viewBox="0 0 1200 900">
+  <defs>
+    <pattern id="pat" width="100" height="100" patternUnits="userSpaceOnUse" patternTransform="scale(2)"><polygon points="50,0 100,50 50,100 0,50" fill="#f7efe3"/><polygon points="0,-50 50,0 0,50 -50,0" fill="#e8b64c"/><polygon points="100,-50 150,0 100,50 50,0" fill="#e8b64c"/><polygon points="0,50 50,100 0,150 -50,100" fill="#e8b64c"/><polygon points="100,50 150,100 100,150 50,100" fill="#e8b64c"/><path d="M 50 0 L 100 50 L 50 100 L 0 50 Z M 50 0 L 0 50 L 50 100 L 100 50" fill="none" stroke="#a3242f" stroke-width="3"/><circle cx="50" cy="50" r="6" fill="#a3242f"/><circle cx="0" cy="0" r="6" fill="#a3242f"/><circle cx="100" cy="0" r="6" fill="#a3242f"/><circle cx="0" cy="100" r="6" fill="#a3242f"/><circle cx="100" cy="100" r="6" fill="#a3242f"/></pattern>
+    <linearGradient id="fade" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0.45" stop-color="#000000" stop-opacity="0"/>
+      <stop offset="1" stop-color="#000000" stop-opacity="0.34"/>
+    </linearGradient>
+  <linearGradient id="light" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0" stop-color="#ffffff" stop-opacity="0.14"/>
+    <stop offset="0.5" stop-color="#ffffff" stop-opacity="0"/>
+    <stop offset="1" stop-color="#000000" stop-opacity="0.12"/>
+  </linearGradient>
+  <radialGradient id="vig" cx="0.5" cy="0.42" r="0.78">
+    <stop offset="0.55" stop-color="#000000" stop-opacity="0"/>
+    <stop offset="1" stop-color="#000000" stop-opacity="0.16"/>
+  </radialGradient>
+  </defs>
+  <rect width="1200" height="900" fill="#a3242f"/>
+  <rect width="1200" height="900" fill="url(#pat)"/>
+  <circle cx="900" cy="240" r="320" fill="#f2c1ae" fill-opacity="0.28"/>
+  <circle cx="300" cy="700" r="240" fill="#435830" fill-opacity="0.14"/>
+  <path d="M 240 197.5 A 62.5 62.5 0 1 0 240 322.5 A 38.75 62.5 0 1 1 240 197.5 Z" fill="#435830"/>
+  <polygon points="960,580 974.81,619.61 1017.06,621.46 983.97,647.79 995.27,688.54 960,665.2 924.73,688.54 936.03,647.79 902.94,621.46 945.19,619.61" fill="#435830"/>
+  <path d="M 700 111 A 69 69 0 1 0 700 249 A 42.78 69 0 1 1 700 111 Z" fill="#435830"/>
+  <polygon points="380,680 389.87,706.41 418.04,707.64 395.98,725.19 403.51,752.36 380,736.8 356.49,752.36 364.02,725.19 341.96,707.64 370.13,706.41" fill="#435830"/>
+  <polygon points="1130,201 1144.57,239.95 1186.11,241.77 1153.57,267.66 1164.68,307.73 1130,284.78 1095.32,307.73 1106.43,267.66 1073.89,241.77 1115.43,239.95" fill="#435830"/>
+  <polygon points="140,560 154.81,599.61 197.06,601.46 163.97,627.79 175.27,668.54 140,645.2 104.73,668.54 116.03,627.79 82.94,601.46 125.19,599.61" fill="#435830"/>
+  <rect width="1200" height="900" fill="url(#fade)"/>
+  <rect width="1200" height="900" fill="url(#light)"/>
+</svg>
