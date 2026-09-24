@@ -101,4 +101,9 @@ export const DDL_STATEMENTS: string[] = [
   )`,
   `CREATE INDEX IF NOT EXISTS login_attempts_email_created_idx ON login_attempts (email, created_at)`,
   `CREATE INDEX IF NOT EXISTS login_attempts_ip_created_idx ON login_attempts (ip, created_at)`,
+  `CREATE TABLE IF NOT EXISTS rate_limits (
+    key text PRIMARY KEY,
+    window_start timestamptz NOT NULL DEFAULT now(),
+    count integer NOT NULL DEFAULT 0
+  )`,
 ];

@@ -9,6 +9,8 @@ import { deliveryPenceFor, newOrderCode } from "@/lib/checkout";
 import { getDb } from "@/lib/db";
 import { orderItems, orders, products } from "@/lib/db/schema";
 import { productImages } from "@/lib/images";
+import { orderQuotaError } from "@/lib/rate-limit";
+import { clientIp } from "@/lib/request-ip";
 
 /**
  * Public order placement (cash on delivery only — no payment is ever taken).
@@ -18,8 +20,9 @@ import { productImages } from "@/lib/images";
  * names and images are re-read from the database, sizes/colourways are
  * re-validated against the live catalog, quantities are clamped to the same
  * 1–10 range the cart enforces, and every total is recomputed in integer
- * pence inside one transaction. A honeypot field sheds naive bots; per-IP
- * rate limiting is scheduled for Phase 5 hardening.
+ * pence inside one transaction. A honeypot field sheds naive bots, and
+ * Phase 5 added fixed-window quotas (per email, per IP) in lib/rate-limit.ts
+ * so one connection can't flood the orders table.
  */
 
 const basketLine = z.object({
@@ -86,6 +89,11 @@ export async function placeOrderAction(
     };
   }
   const basket = parsedBasket.data;
+
+  // Quota after validation so only well-formed requests consume it; blocked
+  // clients never reach the catalog queries below.
+  const quotaError = await orderQuotaError(fields.data.email, await clientIp());
+  if (quotaError) return { error: quotaError };
 
   const db = await getDb();
   const slugs = [...new Set(basket.map((line) => line.slug))];

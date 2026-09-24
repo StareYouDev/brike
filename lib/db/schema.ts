@@ -164,6 +164,20 @@ export const loginAttempts = pgTable(
   ],
 );
 
+/**
+ * Fixed-window counters for public-mutation rate limiting (securly: per-IP
+ * and per-user limits on public endpoints). One row per bucket key; expiry
+ * is a timestamp comparison resolved inside a single atomic upsert, so
+ * concurrent serverless instances can never race the counter.
+ */
+export const rateLimits = pgTable("rate_limits", {
+  key: text("key").primaryKey(),
+  windowStart: timestamp("window_start", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  count: integer("count").notNull().default(0),
+});
+
 /** Every drizzle query in the app runs against this shape (both drivers). */
 export type AppDB = PgliteDatabase<typeof schema>;
 
@@ -176,4 +190,5 @@ export const schema = {
   orders,
   orderItems,
   loginAttempts,
+  rateLimits,
 };
