@@ -517,6 +517,78 @@ export async function getAdminOrder(
   };
 }
 
+export interface OrderConfirmation {
+  code: string;
+  status: string;
+  name: string;
+  email: string;
+  phone: string;
+  address1: string;
+  address2: string | null;
+  city: string;
+  postcode: string;
+  country: string;
+  subtotalPence: number;
+  deliveryPence: number;
+  totalPence: number;
+  createdAt: Date;
+  items: Array<{
+    slug: string;
+    name: string;
+    size: string;
+    colorway: string;
+    qty: number;
+    unitPricePence: number;
+    image: string;
+  }>;
+}
+
+/**
+ * Checkout confirmation lookup by the public BRK-XXXXXX code. The code is
+ * random and unique, so it doubles as an unguessable capability token —
+ * no sequential ids ever appear in customer-facing URLs.
+ */
+export async function getOrderByCode(
+  code: string,
+): Promise<OrderConfirmation | null> {
+  const db = await getDb();
+  const [row] = await db
+    .select()
+    .from(ordersTable)
+    .where(eq(ordersTable.code, code))
+    .limit(1);
+  if (!row) return null;
+  const items = await db
+    .select()
+    .from(orderItemsTable)
+    .where(eq(orderItemsTable.orderId, row.id));
+  return {
+    code: row.code,
+    status: row.status,
+    name: row.name,
+    email: row.email,
+    phone: row.phone,
+    address1: row.address1,
+    address2: row.address2,
+    city: row.city,
+    postcode: row.postcode,
+    country: row.country,
+    subtotalPence: row.subtotalPence,
+    deliveryPence: row.deliveryPence,
+    totalPence: row.totalPence,
+    createdAt: row.createdAt,
+    items: items.map((i) => ({
+      slug: i.slug,
+      name: i.name,
+      size: i.size,
+      colorway: i.colorway,
+      qty: i.qty,
+      unitPricePence: i.unitPricePence,
+      image: i.image,
+    })),
+  };
+}
+
 export async function getPendingOrderCount(): Promise<number> {
   const db = await getDb();
   const rows = await db

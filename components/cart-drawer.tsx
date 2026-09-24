@@ -124,13 +124,13 @@ export function CartDrawer() {
                 Delivery calculated at checkout · {site.currency}
                 {site.standardDelivery.toFixed(2)} standard, free over {formatPrice(site.freeShippingThreshold)}
               </p>
-              <button
-                type="button"
-                className="w-full bg-ink py-3.5 text-[13px] font-semibold tracking-[0.16em] text-cream uppercase transition-colors hover:bg-peach-deep hover:text-ink"
-                onClick={() => alert("Demo checkout — no payment is taken.")}
+              <Link
+                href="/checkout"
+                onClick={close}
+                className="block w-full bg-ink py-3.5 text-center text-[13px] font-semibold tracking-[0.16em] text-cream uppercase transition-colors hover:bg-peach-deep hover:text-ink"
               >
                 Checkout · {formatPrice(subtotal)}
-              </button>
+              </Link>
             </div>
           </>
         )}

@@ -86,7 +86,7 @@ test("drawer quantity stepper recalculates the total", async ({ page }) => {
   await page.getByRole("button", { name: /Add to basket/ }).click();
   const drawer = page.getByRole("dialog");
   await expect(drawer.getByText("Subtotal")).toBeVisible();
-  const checkout = drawer.getByRole("button", { name: /Checkout/ });
+  const checkout = drawer.getByRole("link", { name: /Checkout/ });
   await expect(checkout).toHaveText(/£65\.00/);
   await drawer.getByRole("button", { name: "Increase quantity" }).click();
   await expect(checkout).toHaveText(/£130\.00/);

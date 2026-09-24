@@ -88,7 +88,9 @@ test("products: list, search empty state, create → edit → delete", async ({
   // ---- delete (two-step confirm) ----
   await row.getByRole("button", { name: "Delete" }).click();
   await row.getByRole("button", { name: "Yes, delete" }).click();
-  await expect(row).toHaveCount(0);
+  // The action does DB delete + blob cleanup + layout revalidate — slow
+  // under parallel Neon load, so allow well beyond the default 5s.
+  await expect(row).toHaveCount(0, { timeout: 15_000 });
 
   // PDP is gone after the revalidation.
   const gone = await page.request.get(`/products/${slug}`);
@@ -135,7 +137,7 @@ test("product image upload lands in Vercel Blob and renders", async ({
   // ---- clean up ----
   await row.getByRole("button", { name: "Delete" }).click();
   await row.getByRole("button", { name: "Yes, delete" }).click();
-  await expect(row).toHaveCount(0);
+  await expect(row).toHaveCount(0, { timeout: 15_000 });
 });
 
 test("collections: create and delete round-trip", async ({ page }) => {
@@ -161,7 +163,7 @@ test("collections: create and delete round-trip", async ({ page }) => {
   const row = page.locator("tbody tr").filter({ hasText: slug });
   await row.getByRole("button", { name: "Delete" }).click();
   await row.getByRole("button", { name: "Yes, delete" }).click();
-  await expect(row).toHaveCount(0);
+  await expect(row).toHaveCount(0, { timeout: 15_000 });
 });
 
 test("announcements: add and delete", async ({ page }) => {
@@ -194,7 +196,7 @@ test("announcements: add and delete", async ({ page }) => {
   const newestRow = page.getByTestId("announcement-row").last();
   await newestRow.getByRole("button", { name: "Delete" }).click();
   await newestRow.getByRole("button", { name: "Yes, delete" }).click();
-  await expect(rows).toHaveCount(before);
+  await expect(rows).toHaveCount(before, { timeout: 15_000 });
 });
 
 test("orders: list renders, status filters, unknown id is 404", async ({
