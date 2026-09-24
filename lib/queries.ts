@@ -6,11 +6,12 @@
  * Pages are statically prerendered with these reads; admin mutations call
  * revalidatePath("/", "layout") to refresh them on the next visit.
  */
-import { asc, count } from "drizzle-orm";
+import { asc, count, desc, eq } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import {
   announcements as announcementsTable,
   collections as collectionsTable,
+  orders as ordersTable,
   productCollections,
   products as productsTable,
 } from "@/lib/db/schema";
@@ -145,4 +146,61 @@ export async function getProductCount(): Promise<number> {
   const db = await getDb();
   const rows = await db.select({ value: count() }).from(productsTable);
   return Number(rows[0]?.value ?? 0);
+}
+
+export interface AdminOverview {
+  products: number;
+  collections: number;
+  orders: number;
+  pendingOrders: number;
+  recentOrders: Array<{
+    code: string;
+    name: string;
+    status: string;
+    /** Pounds (mapped from pence) for display. */
+    total: number;
+    createdAt: Date;
+  }>;
+}
+
+/** Dashboard stats + newest orders (admin-only callers). */
+export async function getAdminOverview(): Promise<AdminOverview> {
+  const db = await getDb();
+  const [products, collections, orders, pending, recent] = await Promise.all([
+    db.select({ value: count() }).from(productsTable),
+    db.select({ value: count() }).from(collectionsTable),
+    db.select({ value: count() }).from(ordersTable),
+    db
+      .select({ value: count() })
+      .from(ordersTable)
+      .where(eq(ordersTable.status, "pending")),
+    db
+      .select({
+        code: ordersTable.code,
+        name: ordersTable.name,
+        status: ordersTable.status,
+        totalPence: ordersTable.totalPence,
+        createdAt: ordersTable.createdAt,
+      })
+      .from(ordersTable)
+      .orderBy(desc(ordersTable.createdAt))
+      .limit(5),
+  ]);
+
+  const numOf = (rows: Array<{ value: unknown }>): number =>
+    Number(rows[0]?.value ?? 0);
+
+  return {
+    products: numOf(products),
+    collections: numOf(collections),
+    orders: numOf(orders),
+    pendingOrders: numOf(pending),
+    recentOrders: recent.map((r) => ({
+      code: r.code,
+      name: r.name,
+      status: r.status,
+      total: r.totalPence / 100,
+      createdAt: r.createdAt,
+    })),
+  };
 }

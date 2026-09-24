@@ -1,15 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Instrument_Serif, Poppins, Work_Sans } from "next/font/google";
 import "./globals.css";
-import { SiteHeader } from "@/components/site-header";
-import { SiteFooter } from "@/components/site-footer";
-import { CartDrawer } from "@/components/cart-drawer";
 import { site } from "@/data/catalog";
-import {
-  getAllCollections,
-  getAllProducts,
-  getAnnouncements,
-} from "@/lib/queries";
 
 const instrumentSerif = Instrument_Serif({
   variable: "--font-instrument",
@@ -65,32 +57,18 @@ export const viewport: Viewport = {
   colorScheme: "light",
 };
 
-export default async function RootLayout({ children }: LayoutProps<"/">) {
-  const [announcements, products, collections] = await Promise.all([
-    getAnnouncements(),
-    getAllProducts(),
-    getAllCollections(),
-  ]);
+/**
+ * Root layout: html/body/fonts/site metadata only. Storefront chrome
+ * (header/footer/cart) lives in app/(storefront)/layout.tsx so /admin gets a
+ * chrome-free shell and the storefront 404 keeps the chrome.
+ */
+export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en-GB"
       className={`${instrumentSerif.variable} ${poppins.variable} ${workSans.variable} h-full antialiased`}
     >
-      <body className="flex min-h-full flex-col">
-        <SiteHeader
-          data={{
-            announcements,
-            searchProducts: products,
-            searchCollections: collections.map(({ slug, title }) => ({
-              slug,
-              title,
-            })),
-          }}
-        />
-        <main className="flex-1">{children}</main>
-        <SiteFooter />
-        <CartDrawer />
-      </body>
+      <body className="flex min-h-full flex-col">{children}</body>
     </html>
   );
 }

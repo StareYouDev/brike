@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { Check, ShoppingBag } from "lucide-react";
 import { useCart } from "@/store/cart";
 import { formatPrice, type Product } from "@/data/catalog";
@@ -80,9 +81,12 @@ export function AddToCart({ product }: { product: Product }) {
           <p className="text-[12.5px] font-semibold tracking-[0.14em] text-ink uppercase">
             Size
           </p>
-          <a href="/contact#size-guide" className="text-[13px] text-peach-deep underline underline-offset-2">
+          <Link
+            href="/contact#size-guide"
+            className="text-[13px] text-peach-deep underline underline-offset-2"
+          >
             Size guide
-          </a>
+          </Link>
         </div>
         <div className="flex flex-wrap gap-2">
           {product.sizes.map((s) => (
