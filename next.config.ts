@@ -34,6 +34,8 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  // Native/WASM + socket packages must load through Node, not the bundler.
+  serverExternalPackages: ["@electric-sql/pglite", "postgres", "bcryptjs"],
   async headers() {
     return [
       {

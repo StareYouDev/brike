@@ -53,6 +53,10 @@ export interface Product {
   rating: number;
   reviews: number;
   featured?: boolean;
+  /** Uploaded override; falls back to /prints/<slug>-a.svg when absent. */
+  imageA?: string;
+  /** Uploaded override; falls back to /prints/<slug>-b.svg when absent. */
+  imageB?: string;
 }
 
 export interface Collection {
@@ -61,6 +65,8 @@ export interface Collection {
   shortTitle: string;
   description: string;
   print: Print;
+  /** Uploaded banner override; falls back to /prints/collection-<slug>.svg. */
+  image?: string;
 }
 
 export interface NavLink {

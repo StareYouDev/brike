@@ -5,7 +5,9 @@ import { Hero } from "@/components/hero";
 import { Reveal } from "@/components/reveal";
 import { ProductCard } from "@/components/product-card";
 import { Stars } from "@/components/stars";
-import { collections, products, reviews, site } from "@/data/catalog";
+import { reviews, site } from "@/data/catalog";
+import { getAllCollections, getAllProducts } from "@/lib/queries";
+import { collectionImage } from "@/lib/images";
 
 function SectionHeading({
   eyebrow,
@@ -40,14 +42,22 @@ function SectionHeading({
   );
 }
 
-const shopTiles = ["womens", "kids", "mens", "festive"]
-  .map((slug) => collections.find((c) => c.slug === slug)!)
-  .filter(Boolean);
-
-const newIn = products.filter((p) => p.collections.includes("new-in")).slice(0, 4);
-const bestSellers = products
-  .filter((p) => p.collections.includes("best-sellers"))
-  .slice(0, 4);
+async function getHomeData() {
+  const [collections, products] = await Promise.all([
+    getAllCollections(),
+    getAllProducts(),
+  ]);
+  const shopTiles = ["womens", "kids", "mens", "festive"]
+    .map((slug) => collections.find((c) => c.slug === slug))
+    .filter(Boolean) as typeof collections;
+  const newIn = products
+    .filter((p) => p.collections.includes("new-in"))
+    .slice(0, 4);
+  const bestSellers = products
+    .filter((p) => p.collections.includes("best-sellers"))
+    .slice(0, 4);
+  return { shopTiles, newIn, bestSellers };
+}
 
 const marqueeWords = [
   "Hand-drawn prints",
@@ -83,7 +93,8 @@ function MarqueeBand() {
   );
 }
 
-export default function Home() {
+export default async function Home() {
+  const { shopTiles, newIn, bestSellers } = await getHomeData();
   return (
     <>
       <Hero />
@@ -96,7 +107,7 @@ export default function Home() {
             {shopTiles.map((c) => (
               <Link key={c.slug} href={`/collections/${c.slug}`} className="group relative block aspect-[3/4] overflow-hidden bg-meta">
                 <Image
-                  src={`/prints/collection-${c.slug}.svg`}
+                  src={collectionImage(c)}
                   alt={c.title}
                   fill
                   unoptimized

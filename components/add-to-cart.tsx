@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Check, ShoppingBag } from "lucide-react";
 import { useCart } from "@/store/cart";
 import { formatPrice, type Product } from "@/data/catalog";
+import { productImages } from "@/lib/images";
 import { cn } from "@/lib/utils";
 
 export function AddToCart({ product }: { product: Product }) {
@@ -13,7 +14,8 @@ export function AddToCart({ product }: { product: Product }) {
   const [qty, setQty] = useState(1);
   const [error, setError] = useState(false);
 
-  const image = `/prints/${product.slug}-${colorway === 0 ? "a" : "b"}.svg`;
+  const images = productImages(product);
+  const image = colorway === 0 ? images.a : images.b;
 
   const add = () => {
     if (!size) {
@@ -62,7 +64,7 @@ export function AddToCart({ product }: { product: Product }) {
               <span
                 className="absolute inset-0"
                 style={{
-                  backgroundImage: `url(/prints/${product.slug}-${i === 0 ? "a" : "b"}.svg)`,
+                  backgroundImage: `url(${i === 0 ? images.a : images.b})`,
                   backgroundSize: "cover",
                   backgroundPosition: "center",
                 }}

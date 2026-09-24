@@ -43,6 +43,9 @@ next-env.d.ts
 # harness-local tooling (not part of the site)
 .opencode/
 
+# local development database (PGlite data directory)
+.data/
+
 # playwright artifacts
 test-results/
 playwright-report/

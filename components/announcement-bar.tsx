@@ -1,12 +1,18 @@
-import { announcements, site } from "@/data/catalog";
+import { site } from "@/data/catalog";
 
-function MarqueeGroup({ ariaHidden }: { ariaHidden?: boolean }) {
+function MarqueeGroup({
+  items,
+  ariaHidden,
+}: {
+  items: string[];
+  ariaHidden?: boolean;
+}) {
   return (
     <div
       className="flex shrink-0 items-center gap-10 pr-10"
       aria-hidden={ariaHidden || undefined}
     >
-      {announcements.map((text) => (
+      {items.map((text) => (
         <span
           key={text}
           className="flex items-center gap-10 whitespace-nowrap text-[12.5px] font-medium tracking-[0.14em] text-cream uppercase"
@@ -21,7 +27,8 @@ function MarqueeGroup({ ariaHidden }: { ariaHidden?: boolean }) {
   );
 }
 
-export function AnnouncementBar() {
+export function AnnouncementBar({ items }: { items: string[] }) {
+  if (items.length === 0) return null;
   return (
     <div
       className="marquee overflow-hidden bg-navy py-2.5"
@@ -29,11 +36,11 @@ export function AnnouncementBar() {
       aria-label="Store announcements"
     >
       <div className="marquee-track" style={{ ["--marquee-duration" as string]: "45s" }}>
-        <MarqueeGroup />
-        <MarqueeGroup ariaHidden />
+        <MarqueeGroup items={items} />
+        <MarqueeGroup items={items} ariaHidden />
       </div>
       <span className="sr-only">
-        {site.name} announcements: {announcements.join(". ")}
+        {site.name} announcements: {items.join(". ")}
       </span>
     </div>
   );

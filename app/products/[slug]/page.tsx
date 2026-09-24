@@ -7,15 +7,16 @@ import { ProductCard } from "@/components/product-card";
 import { Reveal } from "@/components/reveal";
 import { Stars } from "@/components/stars";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { formatPrice } from "@/data/catalog";
 import {
-  formatPrice,
-  getCollection,
-  getProduct,
+  getAllCollections,
+  getAllProducts,
   getRelatedProducts,
-  products,
-} from "@/data/catalog";
+} from "@/lib/queries";
+import { productImages } from "@/lib/images";
 
-export function generateStaticParams() {
+export async function generateStaticParams() {
+  const products = await getAllProducts();
   return products.map((p) => ({ slug: p.slug }));
 }
 
@@ -25,7 +26,7 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const product = getProduct(slug);
+  const product = (await getAllProducts()).find((p) => p.slug === slug);
   if (!product) return { title: "Product not found" };
   return {
     title: product.name,
@@ -33,7 +34,7 @@ export async function generateMetadata({
     openGraph: {
       title: product.name,
       description: product.description,
-      images: [{ url: `/prints/${product.slug}-a.svg`, width: 600, height: 750 }],
+      images: [{ url: productImages(product).a, width: 600, height: 750 }],
     },
   };
 }
@@ -44,12 +45,19 @@ export default async function ProductPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const product = getProduct(slug);
+  const [allProducts, allCollections] = await Promise.all([
+    getAllProducts(),
+    getAllCollections(),
+  ]);
+  const product = allProducts.find((p) => p.slug === slug);
   if (!product) notFound();
 
-  const primaryCollection = getCollection(product.collections[0]);
-  const related = getRelatedProducts(product, 4);
+  const primaryCollection = allCollections.find(
+    (c) => c.slug === product.collections[0],
+  );
+  const related = getRelatedProducts(product, allProducts, 4);
   const onSale = typeof product.compareAt === "number";
+  const images = productImages(product);
 
   return (
     <div className="mx-auto max-w-[1400px] px-6 pt-8 pb-20">
@@ -67,7 +75,7 @@ export default async function ProductPage({
         <div className="flex flex-col gap-3 lg:flex-row-reverse">
           <div className="relative aspect-[4/5] flex-1 overflow-hidden bg-meta">
             <Image
-              src={`/prints/${product.slug}-a.svg`}
+              src={images.a}
               alt={`${product.name} — ${product.colorways[0]}`}
               fill
               priority
@@ -88,7 +96,7 @@ export default async function ProductPage({
                 className="relative aspect-square w-1/3 shrink-0 overflow-hidden bg-meta lg:aspect-[4/5] lg:w-24"
               >
                 <Image
-                  src={`/prints/${product.slug}-${variant}.svg`}
+                  src={i === 0 ? images.a : images.b}
                   alt={`${product.name} — ${product.colorways[i] ?? product.colorways[0]}`}
                   fill
                   unoptimized

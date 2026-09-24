@@ -5,6 +5,11 @@ import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { CartDrawer } from "@/components/cart-drawer";
 import { site } from "@/data/catalog";
+import {
+  getAllCollections,
+  getAllProducts,
+  getAnnouncements,
+} from "@/lib/queries";
 
 const instrumentSerif = Instrument_Serif({
   variable: "--font-instrument",
@@ -60,14 +65,28 @@ export const viewport: Viewport = {
   colorScheme: "light",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default async function RootLayout({ children }: LayoutProps<"/">) {
+  const [announcements, products, collections] = await Promise.all([
+    getAnnouncements(),
+    getAllProducts(),
+    getAllCollections(),
+  ]);
   return (
     <html
       lang="en-GB"
       className={`${instrumentSerif.variable} ${poppins.variable} ${workSans.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col">
-        <SiteHeader />
+        <SiteHeader
+          data={{
+            announcements,
+            searchProducts: products,
+            searchCollections: collections.map(({ slug, title }) => ({
+              slug,
+              title,
+            })),
+          }}
+        />
         <main className="flex-1">{children}</main>
         <SiteFooter />
         <CartDrawer />

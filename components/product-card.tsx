@@ -2,6 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
 import { formatPrice, type Product } from "@/data/catalog";
+import { productImages } from "@/lib/images";
 
 const badgeStyles: Record<string, string> = {
   New: "bg-ink text-cream",
@@ -20,6 +21,7 @@ export function ProductCard({
   className?: string;
 }) {
   const onSale = typeof product.compareAt === "number";
+  const images = productImages(product);
 
   return (
     <article className={cn("group relative flex flex-col", className)}>
@@ -29,7 +31,7 @@ export function ProductCard({
         aria-label={product.name}
       >
         <Image
-          src={`/prints/${product.slug}-a.svg`}
+          src={images.a}
           alt={`${product.name} in ${product.colorways[0]}`}
           fill
           sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
@@ -38,7 +40,7 @@ export function ProductCard({
           className="object-cover transition-opacity duration-500 group-hover:opacity-0"
         />
         <Image
-          src={`/prints/${product.slug}-b.svg`}
+          src={images.b}
           alt={`${product.name} in ${product.colorways[1] ?? product.colorways[0]}`}
           fill
           sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"

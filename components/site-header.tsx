@@ -13,11 +13,26 @@ import {
 } from "@/components/ui/sheet";
 import { AnnouncementBar } from "@/components/announcement-bar";
 import { MobileMenu } from "@/components/mobile-menu";
-import { mainNavigation, products, collections } from "@/data/catalog";
+import { mainNavigation, type Collection, type Product } from "@/data/catalog";
 import { cartCount, useCart } from "@/store/cart";
 import { cn } from "@/lib/utils";
+import { productImages } from "@/lib/images";
 
-function SearchPanel({ onNavigate }: { onNavigate?: () => void }) {
+export interface SiteHeaderData {
+  announcements: string[];
+  searchProducts: Product[];
+  searchCollections: Pick<Collection, "slug" | "title">[];
+}
+
+function SearchPanel({
+  products,
+  collections,
+  onNavigate,
+}: {
+  products: Product[];
+  collections: Pick<Collection, "slug" | "title">[];
+  onNavigate?: () => void;
+}) {
   const [query, setQuery] = useState("");
   const q = query.trim().toLowerCase();
   const results = q
@@ -75,7 +90,7 @@ function SearchPanel({ onNavigate }: { onNavigate?: () => void }) {
                     className="flex items-center gap-4 py-3 transition-opacity hover:opacity-70"
                   >
                     <Image
-                      src={`/prints/${p.slug}-a.svg`}
+                      src={productImages(p).a}
                       alt=""
                       width={48}
                       height={60}
@@ -114,7 +129,7 @@ function SearchPanel({ onNavigate }: { onNavigate?: () => void }) {
   );
 }
 
-export function SiteHeader() {
+export function SiteHeader({ data }: { data: SiteHeaderData }) {
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -155,7 +170,7 @@ export function SiteHeader() {
 
   return (
     <header className="sticky top-0 z-40">
-      <AnnouncementBar />
+      <AnnouncementBar items={data.announcements} />
       <div
         className={cn(
           "border-b border-border bg-white/97 backdrop-blur transition-shadow",
@@ -313,7 +328,11 @@ export function SiteHeader() {
         {/* search panel */}
         {searchOpen ? (
           <div className="border-t border-border bg-white py-7">
-            <SearchPanel onNavigate={() => setSearchOpen(false)} />
+            <SearchPanel
+              products={data.searchProducts}
+              collections={data.searchCollections}
+              onNavigate={() => setSearchOpen(false)}
+            />
           </div>
         ) : null}
       </div>

@@ -5,9 +5,11 @@ import Image from "next/image";
 import { Breadcrumb } from "@/components/breadcrumb";
 import { CollectionView } from "@/components/collection-view";
 import { Reveal } from "@/components/reveal";
-import { collections, getCollection, getCollectionProducts } from "@/data/catalog";
+import { getAllCollections, getAllProducts, getCollectionProducts } from "@/lib/queries";
+import { collectionImage } from "@/lib/images";
 
-export function generateStaticParams() {
+export async function generateStaticParams() {
+  const collections = await getAllCollections();
   return collections.map((c) => ({ slug: c.slug }));
 }
 
@@ -17,7 +19,8 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const collection = getCollection(slug);
+  const collections = await getAllCollections();
+  const collection = collections.find((c) => c.slug === slug);
   if (!collection) return { title: "Collection not found" };
   return { title: collection.title, description: collection.description };
 }
@@ -28,9 +31,10 @@ export default async function CollectionPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const collection = getCollection(slug);
+  const collections = await getAllCollections();
+  const collection = collections.find((c) => c.slug === slug);
   if (!collection) notFound();
-  const items = getCollectionProducts(slug);
+  const items = getCollectionProducts(await getAllProducts(), slug);
 
   return (
     <div className="mx-auto max-w-[1400px] px-6 pt-8 pb-20">
@@ -44,27 +48,27 @@ export default async function CollectionPage({
             </p>
             <h1 className="text-balance font-heading text-display-3">{collection.title}</h1>
             <p className="mt-4 max-w-xl text-lead text-foreground/80">
-              {collection.description}
+              {collection.description
+                ? collection.description
+                : `Shop ${collection.title} — print-led pyjamas and nightwear from BRIKE.`}
             </p>
           </div>
         </Reveal>
-        <Reveal y={24} delay={0.08}>
-          <div className="relative aspect-[16/7] overflow-hidden bg-meta">
+        <Reveal y={24} delay={0.1}>
+          <div className="relative aspect-[16/9] overflow-hidden bg-meta">
             <Image
-              src={`/prints/collection-${collection.slug}.svg`}
-              alt=""
-              aria-hidden
+              src={collectionImage(collection)}
+              alt={collection.title}
               fill
               unoptimized
-              priority
-              sizes="(max-width: 1024px) 100vw, 50vw"
+              sizes="(max-width: 1024px) 100vw, 55vw"
               className="object-cover"
             />
           </div>
         </Reveal>
       </div>
 
-      <div className="mt-10">
+      <div className="mt-12">
         <Suspense fallback={null}>
           <CollectionView products={items} />
         </Suspense>

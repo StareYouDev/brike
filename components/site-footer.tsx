@@ -1,5 +1,7 @@
 import Link from "next/link";
-import { collections, site } from "@/data/catalog";
+import { site } from "@/data/catalog";
+import { getAllCollections } from "@/lib/queries";
+import { collectionImage } from "@/lib/images";
 import { NewsletterForm } from "@/components/newsletter-form";
 
 type IconProps = { size?: number };
@@ -31,10 +33,14 @@ function YoutubeIcon({ size = 21 }: IconProps) {
   );
 }
 
-const shopLinks = collections.slice(0, 6).map((c) => ({
-  label: c.shortTitle,
-  href: `/collections/${c.slug}`,
-}));
+async function shopLinks() {
+  const collections = await getAllCollections();
+  return collections.slice(0, 6).map((c) => ({
+    label: c.shortTitle,
+    href: `/collections/${c.slug}`,
+    image: collectionImage(c),
+  }));
+}
 
 const helpLinks = [
   { label: "Delivery & Returns", href: "/contact" },
@@ -69,7 +75,8 @@ function LinkColumn({ heading, links }: { heading: string; links: { label: strin
   );
 }
 
-export function SiteFooter() {
+export async function SiteFooter() {
+  const shop = await shopLinks();
   return (
     <footer className="bg-peach text-ink">
       <div className="mx-auto max-w-[1400px] px-6 pt-16 pb-10">
@@ -91,7 +98,7 @@ export function SiteFooter() {
               </a>
             </div>
           </div>
-          <LinkColumn heading="Shop" links={shopLinks} />
+          <LinkColumn heading="Shop" links={shop} />
           <LinkColumn heading="Help" links={helpLinks} />
           <LinkColumn heading="About" links={aboutLinks} />
         </div>
