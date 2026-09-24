@@ -37,11 +37,8 @@ export default async function AdminProductsPage({
     <div className="space-y-6">
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="text-[11.5px] font-semibold tracking-[0.2em] text-peach-deep uppercase">
-            Catalogue
-          </p>
-          <h1 className="mt-1.5 font-heading text-h3">Products</h1>
-          <p className="mt-1 text-[13px] text-muted-foreground">
+          <h1 className="text-2xl font-semibold tracking-tight">Products</h1>
+          <p className="mt-1.5 text-sm text-muted-foreground">
             {q
               ? `${items.length} match${items.length === 1 ? "" : "es"} for “${q}”`
               : `${items.length} product${items.length === 1 ? "" : "s"}`}
@@ -70,14 +67,14 @@ export default async function AdminProductsPage({
       </form>
 
       {items.length === 0 ? (
-        <div className="flex flex-col items-center gap-2 rounded-lg border border-border bg-background px-6 py-14 text-center">
+        <div className="flex flex-col items-center gap-2 rounded-xl bg-card px-6 py-14 text-center ring-1 ring-foreground/10">
           <Package
             size={26}
             strokeWidth={1.4}
             className="text-muted-foreground"
             aria-hidden
           />
-          <p className="font-heading text-h5">
+          <p className="text-[15px] font-medium">
             {q ? "No matches" : "No products yet"}
           </p>
           <p className="max-w-sm text-[13.5px] text-muted-foreground">
@@ -92,7 +89,7 @@ export default async function AdminProductsPage({
           )}
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-border bg-background">
+        <div className="overflow-hidden rounded-xl bg-card ring-1 ring-foreground/10">
           <Table className="min-w-[760px]">
             <TableHeader>
               <TableRow>
@@ -130,7 +127,7 @@ export default async function AdminProductsPage({
                     <TableCell>
                       <Link
                         href={`/admin/products/${product.id}`}
-                        className="font-medium transition-colors hover:text-peach-deep"
+                        className="font-medium transition-colors underline-offset-2 hover:underline decoration-peach-deep"
                       >
                         {product.name}
                       </Link>

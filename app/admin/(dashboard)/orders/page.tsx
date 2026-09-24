@@ -51,11 +51,8 @@ export default async function AdminOrdersPage({
   return (
     <div className="space-y-6">
       <header>
-        <p className="text-[11.5px] font-semibold tracking-[0.2em] text-peach-deep uppercase">
-          Fulfilment
-        </p>
-        <h1 className="mt-1.5 font-heading text-h3">Orders</h1>
-        <p className="mt-1 text-[13px] text-muted-foreground">
+        <h1 className="text-2xl font-semibold tracking-tight">Orders</h1>
+        <p className="mt-1.5 text-sm text-muted-foreground">
           {items.length} order{items.length === 1 ? "" : "s"}
           {status ? ` · ${STATUS_LABELS[status]}` : ""} · cash on delivery
         </p>
@@ -78,10 +75,10 @@ export default async function AdminOrdersPage({
               href={href}
               aria-current={active ? "page" : undefined}
               className={cn(
-                "rounded-full border px-3.5 py-1.5 text-[13px] transition-colors",
+                "rounded-full border px-3.5 py-1.5 text-[13px] font-medium transition-colors",
                 active
-                  ? "border-ink bg-ink text-cream"
-                  : "border-border bg-background text-ink/70 hover:border-ink/30 hover:text-ink",
+                  ? "border-primary bg-primary text-primary-foreground"
+                  : "border-border bg-card text-muted-foreground hover:border-primary/60 hover:text-ink",
               )}
             >
               {filter.label}
@@ -91,14 +88,14 @@ export default async function AdminOrdersPage({
       </nav>
 
       {items.length === 0 ? (
-        <div className="flex flex-col items-center gap-2 rounded-lg border border-border bg-background px-6 py-14 text-center">
+        <div className="flex flex-col items-center gap-2 rounded-xl bg-card px-6 py-14 text-center ring-1 ring-foreground/10">
           <ClipboardList
             size={26}
             strokeWidth={1.4}
             className="text-muted-foreground"
             aria-hidden
           />
-          <p className="font-heading text-h5">
+          <p className="text-[15px] font-medium">
             {status ? `No ${STATUS_LABELS[status].toLowerCase()} orders` : "No orders yet"}
           </p>
           <p className="max-w-sm text-[13.5px] text-muted-foreground">
@@ -108,7 +105,7 @@ export default async function AdminOrdersPage({
           </p>
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-border bg-background">
+        <div className="overflow-hidden rounded-xl bg-card ring-1 ring-foreground/10">
           <Table className="min-w-[720px]">
             <TableHeader>
               <TableRow>

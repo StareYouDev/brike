@@ -16,7 +16,7 @@ export default async function AdminLoginPage() {
   if (session) redirect("/admin");
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-cream px-4 py-12">
+    <div className="admin-theme flex min-h-screen flex-col items-center justify-center bg-background px-4 py-12">
       <div className="w-full max-w-sm">
         <div className="mb-6 text-center">
           <Link
@@ -25,14 +25,14 @@ export default async function AdminLoginPage() {
           >
             BRIKE
           </Link>
-          <p className="mt-1 font-logo text-[11.5px] tracking-[0.24em] text-peach-deep uppercase">
+          <p className="mt-1 font-logo text-[11.5px] tracking-[0.24em] text-muted-foreground uppercase">
             Admin
           </p>
         </div>
 
-        <div className="border border-t-[3px] border-border border-t-peach-deep bg-background p-7 shadow-[0_18px_40px_-24px_rgba(29,29,27,0.35)]">
-          <h1 className="font-heading text-h4">Sign in</h1>
-          <p className="mt-1.5 mb-6 text-[13.5px] text-muted-foreground">
+        <div className="rounded-xl bg-card p-8 shadow-xs ring-1 ring-foreground/10">
+          <h1 className="text-xl font-semibold tracking-tight">Sign in</h1>
+          <p className="mt-1.5 mb-6 text-sm text-muted-foreground">
             Manage products, content and cash-on-delivery orders.
           </p>
           <LoginForm />

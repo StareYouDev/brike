@@ -12,8 +12,9 @@ import { getPendingOrderCount } from "@/lib/queries";
  * dashboard (worst case: proxy passes → this redirects to /admin/login,
  * which the proxy never redirects — no loop).
  *
- * Phase 3: dashboard-01's SidebarProvider/AppSidebar/SidebarInset structure,
- * themed to the BRIKE ink/cream identity via .admin-theme (app/globals.css).
+ * Phase 3: dashboard-01's SidebarProvider/AppSidebar/SidebarInset structure.
+ * Phase 5 restyle: shadcn-neutral surfaces (--background/--card) with peach as
+ * the only accent, via .admin-theme (app/globals.css).
  */
 export default async function AdminDashboardLayout({
   children,
@@ -26,7 +27,7 @@ export default async function AdminDashboardLayout({
   const pendingOrders = await getPendingOrderCount();
 
   return (
-    <div className="admin-theme min-h-svh bg-cream">
+    <div className="admin-theme min-h-svh bg-background">
       {/* Sidebar tooltips (SidebarMenuButton `tooltip` prop) require a
           Radix TooltipProvider somewhere above them. */}
       <TooltipProvider>
@@ -45,7 +46,7 @@ export default async function AdminDashboardLayout({
           }}
           pendingOrders={pendingOrders}
         />
-        <SidebarInset className="bg-cream">
+        <SidebarInset className="bg-background">
           <AdminHeader />
           <main className="mx-auto w-full max-w-[1400px] flex-1 px-4 py-6 md:px-6 md:py-8">
             {children}

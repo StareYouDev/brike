@@ -22,7 +22,7 @@ function AddRow({
   return (
     <form
       action={formAction}
-      className="flex flex-wrap items-end gap-3 rounded-lg border border-border bg-background p-4"
+      className="flex flex-wrap items-end gap-3 rounded-xl bg-card p-4 ring-1 ring-foreground/10"
     >
       <div className="min-w-60 flex-1 space-y-1.5">
         <Label htmlFor="announcement-new">New announcement</Label>
@@ -147,7 +147,7 @@ export function AnnouncementsManager({
 
       <section
         aria-label="Announcements"
-        className="overflow-hidden rounded-lg border border-border bg-background"
+        className="overflow-hidden rounded-xl bg-card ring-1 ring-foreground/10"
       >
         {items.length === 0 ? (
           <p className="px-5 py-10 text-center text-[13.5px] text-muted-foreground">

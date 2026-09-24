@@ -14,10 +14,7 @@ export default async function NewProductPage() {
   return (
     <div className="space-y-6">
       <header>
-        <p className="text-[11.5px] font-semibold tracking-[0.2em] text-peach-deep uppercase">
-          Catalogue
-        </p>
-        <h1 className="mt-1.5 font-heading text-h3">New product</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">New product</h1>
       </header>
 
       <ProductForm

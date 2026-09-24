@@ -8,7 +8,7 @@ import {
 const STATUS_STYLES = {
   pending: "border-gold/50 bg-gold/15 text-ink",
   confirmed: "border-navy/30 bg-navy/10 text-navy",
-  shipped: "border-peach-deep/40 bg-peach-deep/10 text-peach-deep",
+  shipped: "border-peach-deep/40 bg-peach-deep/10 text-ink",
   delivered: "border-forest/40 bg-forest/10 text-forest",
   cancelled: "border-sale/30 bg-sale/10 text-sale",
 } as const;

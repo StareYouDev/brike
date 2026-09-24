@@ -53,7 +53,7 @@ export function LoginForm() {
       <Button
         type="submit"
         disabled={pending}
-        className="h-11 w-full bg-ink text-[13px] font-semibold tracking-[0.16em] text-cream uppercase hover:bg-peach-deep hover:text-ink"
+        className="h-11 w-full"
       >
         {pending ? "Signing in…" : "Sign in"}
       </Button>

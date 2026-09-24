@@ -88,8 +88,8 @@ export function CollectionForm({
         </div>
       ) : null}
 
-      <section className="space-y-4 rounded-lg border border-border bg-background p-5">
-        <h2 className="font-heading text-h5">Collection details</h2>
+      <section className="space-y-4 rounded-xl bg-card p-5 ring-1 ring-foreground/10">
+        <h2 className="text-base font-medium">Collection details</h2>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div className="space-y-1.5">
             <Label htmlFor="title">Title</Label>
@@ -166,8 +166,8 @@ export function CollectionForm({
         </div>
       </section>
 
-      <section className="space-y-4 rounded-lg border border-border bg-background p-5">
-        <h2 className="font-heading text-h5">Banner artwork</h2>
+      <section className="space-y-4 rounded-xl bg-card p-5 ring-1 ring-foreground/10">
+        <h2 className="text-base font-medium">Banner artwork</h2>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <div className="space-y-1.5">
             <Label htmlFor="printType">Pattern</Label>

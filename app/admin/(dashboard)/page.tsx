@@ -65,10 +65,7 @@ export default async function AdminOverviewPage() {
   return (
     <div className="space-y-7">
       <header>
-        <p className="text-[11.5px] font-semibold tracking-[0.2em] text-peach-deep uppercase">
-          Dashboard
-        </p>
-        <h1 className="mt-1.5 font-heading text-h3">Overview</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">Overview</h1>
       </header>
 
       <section
@@ -83,7 +80,7 @@ export default async function AdminOverviewPage() {
                 {value}
               </CardTitle>
               <CardAction>
-                <span className="rounded-md bg-peach/40 p-2 text-peach-deep">
+                <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-md bg-accent text-peach-deep">
                   <Icon size={16} aria-hidden />
                 </span>
               </CardAction>
@@ -118,7 +115,7 @@ export default async function AdminOverviewPage() {
                 className="text-muted-foreground"
                 aria-hidden
               />
-              <p className="font-heading text-h5">Quiet so far</p>
+              <p className="text-[15px] font-medium">Quiet so far</p>
               <p className="max-w-md text-[13.5px] text-muted-foreground">
                 The activity chart starts drawing as soon as the first
                 cash-on-delivery order lands.
@@ -130,10 +127,10 @@ export default async function AdminOverviewPage() {
 
       <section
         aria-labelledby="recent-orders-heading"
-        className="rounded-lg border border-border bg-background"
+        className="rounded-xl bg-card ring-1 ring-foreground/10"
       >
         <div className="flex items-center justify-between gap-3 border-b border-border px-5 py-4">
-          <h2 id="recent-orders-heading" className="font-heading text-h5">
+          <h2 id="recent-orders-heading" className="text-base font-medium">
             Recent orders
           </h2>
           <span className="text-[12.5px] text-muted-foreground">
@@ -149,7 +146,7 @@ export default async function AdminOverviewPage() {
               className="text-muted-foreground"
               aria-hidden
             />
-            <p className="font-heading text-h5">No orders yet</p>
+            <p className="text-[15px] font-medium">No orders yet</p>
             <p className="max-w-sm text-[13.5px] text-muted-foreground">
               Cash-on-delivery orders placed at checkout will appear here,
               ready to confirm and dispatch.

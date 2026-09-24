@@ -32,9 +32,9 @@ function SectionCard({
   children: React.ReactNode;
 }) {
   return (
-    <section className="overflow-hidden rounded-lg border border-border bg-background">
+    <section className="overflow-hidden rounded-xl bg-card ring-1 ring-foreground/10">
       <div className="border-b border-border px-5 py-4">
-        <h2 className="font-heading text-h5">{title}</h2>
+        <h2 className="text-base font-medium">{title}</h2>
       </div>
       <div className="space-y-3 px-5 py-4">{children}</div>
     </section>
@@ -63,7 +63,7 @@ export default async function AdminOrderDetailPage({
             All orders
           </Link>
           <div className="mt-1.5 flex items-center gap-3">
-            <h1 className="font-heading text-h3">{order.code}</h1>
+            <h1 className="text-2xl font-semibold tracking-tight">{order.code}</h1>
             <StatusBadge status={order.status} />
           </div>
           <p className="mt-1 text-[13.5px] text-muted-foreground">
@@ -96,7 +96,7 @@ export default async function AdminOrderDetailPage({
                   <div className="min-w-0 flex-1">
                     <Link
                       href={`/products/${item.slug}`}
-                      className="font-medium transition-colors hover:text-peach-deep"
+                      className="font-medium transition-colors underline-offset-2 hover:underline decoration-peach-deep"
                     >
                       {item.name}
                     </Link>
@@ -170,7 +170,7 @@ export default async function AdminOrderDetailPage({
               <p>
                 <a
                   href={`mailto:${order.email}`}
-                  className="text-peach-deep underline-offset-2 hover:underline"
+                  className="text-ink underline decoration-peach-deep decoration-2 underline-offset-2 transition-colors hover:decoration-ink"
                 >
                   {order.email}
                 </a>

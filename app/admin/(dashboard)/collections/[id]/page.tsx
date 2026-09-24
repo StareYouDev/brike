@@ -23,11 +23,8 @@ export default async function EditCollectionPage({
   return (
     <div className="space-y-6">
       <header>
-        <p className="text-[11.5px] font-semibold tracking-[0.2em] text-peach-deep uppercase">
-          Catalogue
-        </p>
-        <h1 className="mt-1.5 font-heading text-h3">Edit collection</h1>
-        <p className="mt-1 text-[13.5px] text-muted-foreground">
+        <h1 className="text-2xl font-semibold tracking-tight">Edit collection</h1>
+        <p className="mt-1.5 text-sm text-muted-foreground">
           {collection.title} · /collections/{collection.slug}
         </p>
       </header>

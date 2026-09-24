@@ -195,8 +195,8 @@ export function ProductForm({
       ) : null}
 
       {/* ---- basics ---- */}
-      <section className="space-y-4 rounded-lg border border-border bg-background p-5">
-        <h2 className="font-heading text-h5">Product details</h2>
+      <section className="space-y-4 rounded-xl bg-card p-5 ring-1 ring-foreground/10">
+        <h2 className="text-base font-medium">Product details</h2>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div className="space-y-1.5 md:col-span-2">
             <Label htmlFor="name">Name</Label>
@@ -291,8 +291,8 @@ export function ProductForm({
       </section>
 
       {/* ---- pricing ---- */}
-      <section className="space-y-4 rounded-lg border border-border bg-background p-5">
-        <h2 className="font-heading text-h5">Pricing</h2>
+      <section className="space-y-4 rounded-xl bg-card p-5 ring-1 ring-foreground/10">
+        <h2 className="text-base font-medium">Pricing</h2>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <div className="space-y-1.5">
             <Label htmlFor="price">Price (£)</Label>
@@ -348,8 +348,8 @@ export function ProductForm({
       </section>
 
       {/* ---- sizes ---- */}
-      <section className="space-y-4 rounded-lg border border-border bg-background p-5">
-        <h2 className="font-heading text-h5">Sizes</h2>
+      <section className="space-y-4 rounded-xl bg-card p-5 ring-1 ring-foreground/10">
+        <h2 className="text-base font-medium">Sizes</h2>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
           {SIZE_TOKENS.map((size) => (
             <label
@@ -380,8 +380,8 @@ export function ProductForm({
       </section>
 
       {/* ---- print ---- */}
-      <section className="space-y-4 rounded-lg border border-border bg-background p-5">
-        <h2 className="font-heading text-h5">Print artwork</h2>
+      <section className="space-y-4 rounded-xl bg-card p-5 ring-1 ring-foreground/10">
+        <h2 className="text-base font-medium">Print artwork</h2>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <div className="space-y-1.5">
             <Label htmlFor="printType">Pattern</Label>
@@ -439,8 +439,8 @@ export function ProductForm({
       </section>
 
       {/* ---- media ---- */}
-      <section className="space-y-4 rounded-lg border border-border bg-background p-5">
-        <h2 className="font-heading text-h5">Images</h2>
+      <section className="space-y-4 rounded-xl bg-card p-5 ring-1 ring-foreground/10">
+        <h2 className="text-base font-medium">Images</h2>
         <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
           <ImageSlot
             label="Image A (main)"
@@ -462,8 +462,8 @@ export function ProductForm({
       </section>
 
       {/* ---- classification ---- */}
-      <section className="space-y-4 rounded-lg border border-border bg-background p-5">
-        <h2 className="font-heading text-h5">Collections &amp; meta</h2>
+      <section className="space-y-4 rounded-xl bg-card p-5 ring-1 ring-foreground/10">
+        <h2 className="text-base font-medium">Collections &amp; meta</h2>
         <div className="space-y-1.5">
           <span className="text-[13.5px] font-medium">Collections</span>
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">

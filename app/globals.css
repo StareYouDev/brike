@@ -224,16 +224,27 @@
   display: none;
 }
 
-/* ---------- admin shell (dashboard-01 structure, BRIKE ink/cream identity) ---------- */
-/* Scoped to the admin layout wrapper: remaps the shadcn sidebar tokens so the
-   sidebar renders ink-on-cream with peach accents instead of the default white. */
+/* ---------- admin shell (dashboard-01 structure, shadcn neutral + BRIKE peach) ---------- */
+/* Hallmark · macrostructure: dashboard-01 (in-place redesign) · tone: utilitarian
+ * theme: shadcn-neutral with a single peach accent · accent: --peach (#f2c1ae)
+ * + --peach-deep (#e47e56) on ink · surfaces: --background/--card, ring border
+ * Scoped to the admin layout wrapper: neutral light sidebar where color only
+ * means something — peach marks the active nav item, the pending-order badge
+ * and primary buttons; everything else stays ink/grey. */
 .admin-theme {
-  --sidebar: #1d1d1b;
-  --sidebar-foreground: #f4ead9;
-  --sidebar-primary: #f2c1ae;
-  --sidebar-primary-foreground: #1d1d1b;
-  --sidebar-accent: rgba(242, 193, 174, 0.16);
-  --sidebar-accent-foreground: #f2c1ae;
-  --sidebar-border: rgba(244, 234, 217, 0.14);
-  --sidebar-ring: #f2c1ae;
+  --sidebar: #fafafa;
+  --sidebar-foreground: #1d1d1b;
+  --sidebar-primary: #e47e56;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #fdeee7;
+  --sidebar-accent-foreground: #1d1d1b;
+  --sidebar-border: #e5e5e1;
+  --sidebar-ring: #e47e56;
+}
+
+/* Admin headings are UI type, not editorial display type: the @layer base
+   rule hands h1–h6 the Instrument serif for the storefront, so re-point them
+   at the sans stack inside the admin shell (unlayered rule beats @layer). */
+.admin-theme :is(h1, h2, h3, h4, h5, h6) {
+  font-family: var(--font-sans);
 }
