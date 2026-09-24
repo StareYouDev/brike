@@ -27,23 +27,24 @@ function createMemoryDb(): AppDB {
 
 async function createDb(): Promise<AppDB> {
   const url = process.env.DATABASE_URL;
+
+  // Forced in-memory (unit tests / PGMEMORY=1) wins over DATABASE_URL so
+  // tests never touch a real database — DATABASE_URL now exists locally too.
+  const useMemory =
+    process.env.NODE_ENV === "test" || process.env.PGMEMORY === "1";
+
+  if (useMemory) return createMemoryDb();
+
   if (url) {
     // prepare: false keeps us compatible with Neon's pooled (pgbouncer) URL.
     const client = postgres(url, { max: 5, prepare: false });
     return drizzlePostgres(client, { schema }) as unknown as AppDB;
   }
 
-  const useMemory =
-    process.env.NODE_ENV === "test" ||
-    process.env.PGMEMORY === "1" ||
-    Boolean(process.env.VERCEL);
-
-  if (useMemory) {
-    if (process.env.VERCEL && !url) {
-      console.warn(
-        "[db] DATABASE_URL is missing on Vercel — falling back to an ephemeral in-memory database. Orders and admin edits will NOT persist. Set DATABASE_URL.",
-      );
-    }
+  if (process.env.VERCEL) {
+    console.warn(
+      "[db] DATABASE_URL is missing on Vercel — falling back to an ephemeral in-memory database. Orders and admin edits will NOT persist. Set DATABASE_URL.",
+    );
     return createMemoryDb();
   }
 
@@ -52,11 +53,20 @@ async function createDb(): Promise<AppDB> {
   return drizzlePglite(new PGlite(dir), { schema }) as unknown as AppDB;
 }
 
+/**
+ * DDL + seed run inside one transaction holding a cross-process advisory
+ * lock, so concurrent build workers and cold-starting functions serialize
+ * against Postgres instead of racing CREATE TABLE or double-seeding tables
+ * that have no unique guard (announcements).
+ */
 async function runSetup(db: AppDB): Promise<void> {
-  for (const statement of DDL_STATEMENTS) {
-    await db.execute(sql.raw(statement));
-  }
-  await ensureSeeded(db);
+  await db.transaction(async (tx) => {
+    await tx.execute(sql.raw("select pg_advisory_xact_lock(918273645)"));
+    for (const statement of DDL_STATEMENTS) {
+      await tx.execute(sql.raw(statement));
+    }
+    await ensureSeeded(tx as unknown as AppDB);
+  });
 }
 
 async function init(): Promise<AppDB> {
