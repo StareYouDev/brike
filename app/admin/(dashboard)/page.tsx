@@ -1,8 +1,18 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { ClipboardList, Clock, Inbox, Layers, Package } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { OrdersChart } from "@/components/admin/orders-chart";
+import { StatusBadge } from "@/components/admin/status-badge";
+import {
+  Card,
+  CardAction,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { formatPrice } from "@/data/catalog";
-import { getAdminOverview } from "@/lib/queries";
+import { getAdminDailyOrders, getAdminOverview } from "@/lib/queries";
 
 export const metadata: Metadata = {
   title: "Overview",
@@ -18,12 +28,38 @@ const dateFormatter = new Intl.DateTimeFormat("en-GB", {
 export default async function AdminOverviewPage() {
   const { products, collections, orders, pendingOrders, recentOrders } =
     await getAdminOverview();
+  const daily = await getAdminDailyOrders(14);
+  const orders14 = daily.reduce((sum, day) => sum + day.orders, 0);
 
   const stats = [
-    { label: "Products", value: products, icon: Package },
-    { label: "Collections", value: collections, icon: Layers },
-    { label: "Orders", value: orders, icon: ClipboardList },
-    { label: "Pending orders", value: pendingOrders, icon: Clock },
+    {
+      label: "Products",
+      value: products,
+      icon: Package,
+      href: "/admin/products",
+      foot: "Manage products",
+    },
+    {
+      label: "Collections",
+      value: collections,
+      icon: Layers,
+      href: "/admin/collections",
+      foot: "Manage collections",
+    },
+    {
+      label: "Orders",
+      value: orders,
+      icon: ClipboardList,
+      href: "/admin/orders",
+      foot: "All time · cash on delivery",
+    },
+    {
+      label: "Pending orders",
+      value: pendingOrders,
+      icon: Clock,
+      href: "/admin/orders?status=pending",
+      foot: "Awaiting confirmation",
+    },
   ];
 
   return (
@@ -37,24 +73,59 @@ export default async function AdminOverviewPage() {
 
       <section
         aria-label="Store statistics"
-        className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4"
+        className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4"
       >
-        {stats.map(({ label, value, icon: Icon }) => (
-          <div
-            key={label}
-            className="rounded-lg border border-border bg-background p-4"
-          >
-            <div className="flex items-center justify-between gap-2">
-              <p className="text-[11.5px] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
-                {label}
-              </p>
-              <Icon size={16} className="text-peach-deep" aria-hidden />
-            </div>
-            <p className="mt-3 text-[28px] leading-none font-semibold tabular-nums">
-              {value}
-            </p>
-          </div>
+        {stats.map(({ label, value, icon: Icon, href, foot }) => (
+          <Card key={label} className="@container/card">
+            <CardHeader>
+              <CardDescription>{label}</CardDescription>
+              <CardTitle className="text-[28px] leading-none font-semibold tabular-nums @[250px]/card:text-3xl">
+                {value}
+              </CardTitle>
+              <CardAction>
+                <span className="rounded-md bg-peach/40 p-2 text-peach-deep">
+                  <Icon size={16} aria-hidden />
+                </span>
+              </CardAction>
+            </CardHeader>
+            <CardFooter>
+              <Link
+                href={href}
+                className="text-[13px] text-muted-foreground transition-colors hover:text-ink"
+              >
+                {foot} →
+              </Link>
+            </CardFooter>
+          </Card>
         ))}
+      </section>
+
+      <section aria-label="Order activity">
+        {orders14 > 0 ? (
+          <OrdersChart data={daily} />
+        ) : (
+          <Card className="@container/card">
+            <CardHeader>
+              <CardTitle>Order activity</CardTitle>
+              <CardDescription>
+                Last 14 days — cash on delivery
+              </CardDescription>
+            </CardHeader>
+            <div className="flex flex-col items-center gap-2 px-6 py-10 text-center">
+              <Inbox
+                size={26}
+                strokeWidth={1.4}
+                className="text-muted-foreground"
+                aria-hidden
+              />
+              <p className="font-heading text-h5">Quiet so far</p>
+              <p className="max-w-md text-[13.5px] text-muted-foreground">
+                The activity chart starts drawing as soon as the first
+                cash-on-delivery order lands.
+              </p>
+            </div>
+          </Card>
+        )}
       </section>
 
       <section
@@ -98,9 +169,7 @@ export default async function AdminOverviewPage() {
                   </p>
                 </div>
                 <div className="flex items-center gap-4">
-                  <Badge variant="outline" className="capitalize">
-                    {order.status}
-                  </Badge>
+                  <StatusBadge status={order.status} />
                   <span className="font-semibold tabular-nums">
                     {formatPrice(order.total)}
                   </span>

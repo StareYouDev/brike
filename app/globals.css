@@ -223,3 +223,17 @@
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
+
+/* ---------- admin shell (dashboard-01 structure, BRIKE ink/cream identity) ---------- */
+/* Scoped to the admin layout wrapper: remaps the shadcn sidebar tokens so the
+   sidebar renders ink-on-cream with peach accents instead of the default white. */
+.admin-theme {
+  --sidebar: #1d1d1b;
+  --sidebar-foreground: #f4ead9;
+  --sidebar-primary: #f2c1ae;
+  --sidebar-primary-foreground: #1d1d1b;
+  --sidebar-accent: rgba(242, 193, 174, 0.16);
+  --sidebar-accent-foreground: #f2c1ae;
+  --sidebar-border: rgba(244, 234, 217, 0.14);
+  --sidebar-ring: #f2c1ae;
+}

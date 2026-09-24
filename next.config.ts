@@ -20,7 +20,7 @@ const securityHeaders = [
             "script-src 'self' 'unsafe-inline'",
             // 'unsafe-inline' covers inline style attributes used by components.
             "style-src 'self' 'unsafe-inline'",
-            "img-src 'self' data:",
+            "img-src 'self' data: https://*.blob.vercel-storage.com",
             "font-src 'self'",
             "connect-src 'self'",
             "object-src 'none'",
@@ -36,6 +36,14 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   // Native/WASM + socket packages must load through Node, not the bundler.
   serverExternalPackages: ["@electric-sql/pglite", "postgres", "bcryptjs"],
+  images: {
+    // Admin uploads live in Vercel Blob (`brike-media`). Product/collection art
+    // renders `unoptimized` (storefront convention for /prints SVGs), but keep
+    // the optimizer door open for remote blob URLs too.
+    remotePatterns: [
+      { protocol: "https", hostname: "**.blob.vercel-storage.com" },
+    ],
+  },
   async headers() {
     return [
       {

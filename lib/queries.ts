@@ -6,11 +6,12 @@
  * Pages are statically prerendered with these reads; admin mutations call
  * revalidatePath("/", "layout") to refresh them on the next visit.
  */
-import { asc, count, desc, eq } from "drizzle-orm";
+import { asc, count, desc, eq, gte, ilike, or } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import {
   announcements as announcementsTable,
   collections as collectionsTable,
+  orderItems as orderItemsTable,
   orders as ordersTable,
   productCollections,
   products as productsTable,
@@ -203,4 +204,365 @@ export async function getAdminOverview(): Promise<AdminOverview> {
       createdAt: r.createdAt,
     })),
   };
+}
+
+// ---------------------------------------------------------------------------
+// Admin read layer (Phase 3 dashboard). Callers are admin-only pages/actions.
+// ---------------------------------------------------------------------------
+
+export interface AdminProductListItem {
+  id: string;
+  slug: string;
+  name: string;
+  pricePence: number;
+  compareAtPence: number | null;
+  badge: string | null;
+  featured: boolean;
+  sortOrder: number;
+  imageA: string | null;
+  imageB: string | null;
+  collections: string[];
+  updatedAt: Date;
+}
+
+export interface AdminProductDetail
+  extends Omit<AdminProductListItem, "collections"> {
+  style: string;
+  fabric: string;
+  description: string;
+  details: string[];
+  colorways: string[];
+  sizes: string[];
+  printType: string;
+  printA: string;
+  printB: string;
+  rating: number;
+  reviews: number;
+  createdAt: Date;
+  collectionIds: string[];
+}
+
+/** Product rows for the admin table, optionally filtered by name/slug. */
+export async function getAdminProducts(
+  q?: string,
+): Promise<AdminProductListItem[]> {
+  const db = await getDb();
+  const where = q
+    ? or(
+        ilike(productsTable.name, `%${q}%`),
+        ilike(productsTable.slug, `%${q}%`),
+      )
+    : undefined;
+  const [rows, links, cols] = await Promise.all([
+    db
+      .select()
+      .from(productsTable)
+      .where(where)
+      .orderBy(asc(productsTable.sortOrder), asc(productsTable.name)),
+    db.select().from(productCollections),
+    db.select().from(collectionsTable),
+  ]);
+  const slugById = new Map(cols.map((c) => [c.id, c.slug]));
+  const byProduct = new Map<string, string[]>();
+  for (const link of links) {
+    const slug = slugById.get(link.collectionId);
+    if (!slug) continue;
+    const list = byProduct.get(link.productId) ?? [];
+    list.push(slug);
+    byProduct.set(link.productId, list);
+  }
+  return rows.map((row) => ({
+    id: row.id,
+    slug: row.slug,
+    name: row.name,
+    pricePence: row.pricePence,
+    compareAtPence: row.compareAtPence,
+    badge: row.badge,
+    featured: row.featured,
+    sortOrder: row.sortOrder,
+    imageA: row.imageA,
+    imageB: row.imageB,
+    collections: byProduct.get(row.id) ?? [],
+    updatedAt: row.updatedAt,
+  }));
+}
+
+/** One product (full row) plus its collection ids for the edit form. */
+export async function getAdminProduct(
+  id: string,
+): Promise<AdminProductDetail | null> {
+  const db = await getDb();
+  const [row] = await db
+    .select()
+    .from(productsTable)
+    .where(eq(productsTable.id, id))
+    .limit(1);
+  if (!row) return null;
+  const links = await db
+    .select()
+    .from(productCollections)
+    .where(eq(productCollections.productId, id));
+  return {
+    id: row.id,
+    slug: row.slug,
+    name: row.name,
+    pricePence: row.pricePence,
+    compareAtPence: row.compareAtPence,
+    badge: row.badge,
+    featured: row.featured,
+    sortOrder: row.sortOrder,
+    imageA: row.imageA,
+    imageB: row.imageB,
+    style: row.style,
+    fabric: row.fabric,
+    description: row.description,
+    details: row.details,
+    colorways: row.colorways,
+    sizes: row.sizes,
+    printType: row.printType,
+    printA: row.printA,
+    printB: row.printB,
+    rating: row.rating,
+    reviews: row.reviews,
+    updatedAt: row.updatedAt,
+    createdAt: row.createdAt,
+    collectionIds: links.map((l) => l.collectionId),
+  };
+}
+
+export interface AdminCollectionListItem {
+  id: string;
+  slug: string;
+  title: string;
+  shortTitle: string;
+  description: string;
+  image: string | null;
+  printType: string;
+  printA: string;
+  printB: string;
+  sortOrder: number;
+  productCount: number;
+}
+
+export async function getAdminCollections(): Promise<AdminCollectionListItem[]> {
+  const db = await getDb();
+  const [rows, counts] = await Promise.all([
+    db
+      .select()
+      .from(collectionsTable)
+      .orderBy(asc(collectionsTable.sortOrder), asc(collectionsTable.title)),
+    db
+      .select({
+        collectionId: productCollections.collectionId,
+        n: count(),
+      })
+      .from(productCollections)
+      .groupBy(productCollections.collectionId),
+  ]);
+  const countById = new Map(counts.map((c) => [c.collectionId, Number(c.n)]));
+  return rows.map((row) => ({
+    id: row.id,
+    slug: row.slug,
+    title: row.title,
+    shortTitle: row.shortTitle,
+    description: row.description,
+    image: row.image,
+    printType: row.printType,
+    printA: row.printA,
+    printB: row.printB,
+    sortOrder: row.sortOrder,
+    productCount: countById.get(row.id) ?? 0,
+  }));
+}
+
+/** One collection row for the edit form (null when unknown/invalid id). */
+export async function getAdminCollection(
+  id: string,
+): Promise<AdminCollectionListItem | null> {
+  const list = await getAdminCollections();
+  return list.find((c) => c.id === id) ?? null;
+}
+
+export interface AdminAnnouncement {
+  id: string;
+  text: string;
+  sortOrder: number;
+}
+
+export async function getAdminAnnouncements(): Promise<AdminAnnouncement[]> {
+  const db = await getDb();
+  const rows = await db
+    .select()
+    .from(announcementsTable)
+    .orderBy(asc(announcementsTable.sortOrder));
+  return rows.map((r) => ({ id: r.id, text: r.text, sortOrder: r.sortOrder }));
+}
+
+export interface AdminOrderListItem {
+  id: string;
+  code: string;
+  status: string;
+  name: string;
+  email: string;
+  totalPence: number;
+  itemCount: number;
+  createdAt: Date;
+}
+
+/** Newest orders first; optional status filter (validated by the caller). */
+export async function getAdminOrders(
+  status?: string,
+): Promise<AdminOrderListItem[]> {
+  const db = await getDb();
+  const where = status ? eq(ordersTable.status, status) : undefined;
+  const [rows, counts] = await Promise.all([
+    db
+      .select()
+      .from(ordersTable)
+      .where(where)
+      .orderBy(desc(ordersTable.createdAt)),
+    db
+      .select({
+        orderId: orderItemsTable.orderId,
+        n: count(),
+      })
+      .from(orderItemsTable)
+      .groupBy(orderItemsTable.orderId),
+  ]);
+  const countById = new Map(counts.map((c) => [c.orderId, Number(c.n)]));
+  return rows.map((row) => ({
+    id: row.id,
+    code: row.code,
+    status: row.status,
+    name: row.name,
+    email: row.email,
+    totalPence: row.totalPence,
+    itemCount: countById.get(row.id) ?? 0,
+    createdAt: row.createdAt,
+  }));
+}
+
+export interface AdminOrderDetail {
+  id: string;
+  code: string;
+  status: string;
+  paymentMethod: string;
+  email: string;
+  name: string;
+  phone: string;
+  address1: string;
+  address2: string | null;
+  city: string;
+  postcode: string;
+  country: string;
+  notes: string | null;
+  subtotalPence: number;
+  deliveryPence: number;
+  totalPence: number;
+  createdAt: Date;
+  updatedAt: Date;
+  items: Array<{
+    slug: string;
+    name: string;
+    size: string;
+    colorway: string;
+    qty: number;
+    unitPricePence: number;
+    image: string;
+  }>;
+}
+
+export async function getAdminOrder(
+  id: string,
+): Promise<AdminOrderDetail | null> {
+  const db = await getDb();
+  const [row] = await db
+    .select()
+    .from(ordersTable)
+    .where(eq(ordersTable.id, id))
+    .limit(1);
+  if (!row) return null;
+  const items = await db
+    .select()
+    .from(orderItemsTable)
+    .where(eq(orderItemsTable.orderId, id));
+  return {
+    id: row.id,
+    code: row.code,
+    status: row.status,
+    paymentMethod: row.paymentMethod,
+    email: row.email,
+    name: row.name,
+    phone: row.phone,
+    address1: row.address1,
+    address2: row.address2,
+    city: row.city,
+    postcode: row.postcode,
+    country: row.country,
+    notes: row.notes,
+    subtotalPence: row.subtotalPence,
+    deliveryPence: row.deliveryPence,
+    totalPence: row.totalPence,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+    items: items.map((i) => ({
+      slug: i.slug,
+      name: i.name,
+      size: i.size,
+      colorway: i.colorway,
+      qty: i.qty,
+      unitPricePence: i.unitPricePence,
+      image: i.image,
+    })),
+  };
+}
+
+export async function getPendingOrderCount(): Promise<number> {
+  const db = await getDb();
+  const rows = await db
+    .select({ value: count() })
+    .from(ordersTable)
+    .where(eq(ordersTable.status, "pending"));
+  return Number(rows[0]?.value ?? 0);
+}
+
+/**
+ * Orders + revenue grouped by UTC day for the overview chart. Cancelled
+ * orders still count as activity but contribute no revenue. Days with no
+ * activity are present (zeroed) so the chart axis stays continuous.
+ */
+export async function getAdminDailyOrders(
+  days = 14,
+): Promise<Array<{ date: string; orders: number; revenue: number }>> {
+  const db = await getDb();
+  const since = new Date(Date.now() - days * 86_400_000);
+  const rows = await db
+    .select({
+      createdAt: ordersTable.createdAt,
+      totalPence: ordersTable.totalPence,
+      status: ordersTable.status,
+    })
+    .from(ordersTable)
+    .where(gte(ordersTable.createdAt, since));
+
+  const cells = new Map<string, { orders: number; revenuePence: number }>();
+  for (let i = days - 1; i >= 0; i--) {
+    const day = new Date(Date.now() - i * 86_400_000);
+    cells.set(day.toISOString().slice(0, 10), {
+      orders: 0,
+      revenuePence: 0,
+    });
+  }
+  for (const row of rows) {
+    const key = row.createdAt.toISOString().slice(0, 10);
+    const cell = cells.get(key);
+    if (!cell) continue;
+    cell.orders += 1;
+    if (row.status !== "cancelled") cell.revenuePence += row.totalPence;
+  }
+  return [...cells.entries()].map(([date, cell]) => ({
+    date,
+    orders: cell.orders,
+    revenue: cell.revenuePence / 100,
+  }));
 }

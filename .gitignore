@@ -42,6 +42,9 @@ next-env.d.ts
 
 # harness-local tooling (not part of the site)
 .opencode/
+.agents/
+.claude/
+skills-lock.json
 
 # local development database (PGlite data directory)
 .data/
