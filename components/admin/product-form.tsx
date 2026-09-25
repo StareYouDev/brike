@@ -147,6 +147,38 @@ function ImageSlot({
   );
 }
 
+/**
+ * Re-apply one control's value from the pre-submit FormData snapshot.
+ * File inputs can't be set through `.value` — a DataTransfer re-attaches the
+ * actual File object, which is what keeps an image upload alive across a
+ * failed save (React resets the form after every action).
+ */
+function restoreField(
+  element: HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement,
+  snapshot: FormData,
+) {
+  const name = element.name;
+  if (!name) return;
+  if (element instanceof HTMLInputElement) {
+    if (element.type === "file") {
+      const file = snapshot.get(name);
+      if (file instanceof File && file.size > 0) {
+        const transfer = new DataTransfer();
+        transfer.items.add(file);
+        element.files = transfer.files;
+      }
+      return;
+    }
+    if (element.type === "checkbox" || element.type === "radio") {
+      // FormData only carries the checked boxes; anything absent was off.
+      element.checked = snapshot.getAll(name).includes(element.value);
+      return;
+    }
+  }
+  const [value] = snapshot.getAll(name);
+  if (typeof value === "string") element.value = value;
+}
+
 export function ProductForm({
   mode,
   action,
@@ -183,8 +215,44 @@ export function ProductForm({
   const money = (pence: number | null | undefined): string =>
     pence === null || pence === undefined ? "" : (pence / 100).toFixed(2);
 
+  const formRef = useRef<HTMLFormElement>(null);
+  const snapshotRef = useRef<FormData | null>(null);
+
+  // React resets the form whenever an action settles — including FAILED
+  // saves — which would wipe every typed field and silently drop the file
+  // chosen in an image slot (the "my image won't save" trap: preview still
+  // shows the file, but the input is empty). Snapshot on submit, then restore
+  // after a failure so the admin never loses edits or the selected image.
+  useEffect(() => {
+    const form = formRef.current;
+    const snapshot = snapshotRef.current;
+    if (!form || !snapshot) return;
+    const failed =
+      Boolean(state.error) ||
+      Object.keys(state.fieldErrors ?? {}).length > 0;
+    if (!failed) return;
+    for (const element of Array.from(form.elements)) {
+      if (
+        element instanceof HTMLInputElement ||
+        element instanceof HTMLTextAreaElement ||
+        element instanceof HTMLSelectElement
+      ) {
+        restoreField(element, snapshot);
+      }
+    }
+  }, [state]);
+
   return (
-    <form action={formAction} className="space-y-6">
+    <form
+      ref={formRef}
+      action={formAction}
+      onSubmit={() => {
+        if (formRef.current) {
+          snapshotRef.current = new FormData(formRef.current);
+        }
+      }}
+      className="space-y-6"
+    >
       {state.error ? (
         <div
           role="alert"

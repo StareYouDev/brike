@@ -15,6 +15,13 @@ import { del, put } from "@vercel/blob";
 
 export const MAX_UPLOAD_BYTES = 2 * 1024 * 1024; // 2 MB
 
+/**
+ * User-safe upload rejection (bad type/size). Actions surface `message`
+ * verbatim to the admin; unexpected errors (network, blob token) stay behind
+ * the generic save-failed copy so internals never leak into the UI.
+ */
+export class UploadError extends Error {}
+
 type RasterKind = "png" | "jpeg" | "webp";
 
 /** Magic-byte sniffing: PNG / JPEG / WEBP (RIFF….WEBP). */
@@ -61,12 +68,12 @@ export async function uploadImage(
 ): Promise<string | null> {
   if (!file || file.size === 0) return null;
   if (file.size > MAX_UPLOAD_BYTES) {
-    throw new Error("Image must be 2 MB or smaller.");
+    throw new UploadError("Image must be 2 MB or smaller.");
   }
   const bytes = new Uint8Array(await file.arrayBuffer());
   const kind = sniff(bytes);
   if (!kind) {
-    throw new Error("Only PNG, JPEG or WebP images are allowed.");
+    throw new UploadError("Only PNG, JPEG or WebP images are allowed.");
   }
   const ext = kind === "jpeg" ? "jpg" : kind;
   const { url } = await put(

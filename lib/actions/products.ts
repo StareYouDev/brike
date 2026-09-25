@@ -13,7 +13,7 @@ import {
 import { BADGES, PALETTE_NAMES, PATTERN_TYPES } from "@/lib/admin-form";
 import { getDb } from "@/lib/db";
 import { productCollections, products } from "@/lib/db/schema";
-import { removeImage, uploadImage } from "@/lib/uploads";
+import { removeImage, uploadImage, UploadError } from "@/lib/uploads";
 
 const lines = (value: string): string[] =>
   value
@@ -263,6 +263,8 @@ export async function createProductAction(
     });
   } catch (error) {
     await Promise.all(uploaded.map(removeImage)); // no orphan blobs on failure
+    // Upload validation messages are written for the admin — show them.
+    if (error instanceof UploadError) return { error: error.message };
     if (isDuplicateKeyError(error)) {
       return { fieldErrors: { slug: ["That slug is already in use."] } };
     }
@@ -331,6 +333,8 @@ export async function updateProductAction(
     }
   } catch (error) {
     await Promise.all(uploaded.map(removeImage));
+    // Upload validation messages are written for the admin — show them.
+    if (error instanceof UploadError) return { error: error.message };
     if (isDuplicateKeyError(error)) {
       return { fieldErrors: { slug: ["That slug is already in use."] } };
     }
@@ -361,4 +365,50 @@ export async function deleteProductAction(id: string): Promise<void> {
       .map(removeImage),
   );
   revalidatePath("/", "layout");
+}
+
+/**
+ * Persist a drag-and-drop reorder of the *complete* product list: `ids` is
+ * every product id in its new display order, and `sortOrder` is rewritten to
+ * the array index. Partial lists are rejected (never from a filtered view),
+ * so a subset can never scramble the global storefront order.
+ */
+export async function reorderProductsAction(
+  ids: string[],
+): Promise<ActionState> {
+  await requireAdmin();
+  if (
+    !Array.isArray(ids) ||
+    ids.length === 0 ||
+    ids.length > 1000 ||
+    new Set(ids).size !== ids.length ||
+    ids.some((id) => typeof id !== "string" || !parseUuid(id))
+  ) {
+    return { error: "That product order isn't valid." };
+  }
+
+  const db = await getDb();
+  try {
+    const existing = await db.select({ id: products.id }).from(products);
+    const known = new Set(existing.map((row) => row.id));
+    if (existing.length !== ids.length || !ids.every((id) => known.has(id))) {
+      return {
+        error: "The product list changed elsewhere — reload and try again.",
+      };
+    }
+    await db.transaction(async (tx) => {
+      for (const [index, id] of ids.entries()) {
+        await tx
+          .update(products)
+          .set({ sortOrder: index })
+          .where(eq(products.id, id));
+      }
+    });
+  } catch (error) {
+    console.error("[admin] reorder products failed:", error);
+    return { error: "Saving the order failed. Please try again." };
+  }
+
+  revalidatePath("/", "layout");
+  return {};
 }
