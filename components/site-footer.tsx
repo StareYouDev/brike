@@ -44,7 +44,7 @@ async function shopLinks() {
 
 const helpLinks = [
   { label: "Delivery & Returns", href: "/contact" },
-  { label: "Size Guide", href: "/contact" },
+  { label: "Size Guide", href: "/size-guide" },
   { label: "Contact Us", href: "/contact" },
   { label: "Our Story", href: "/about" },
 ];

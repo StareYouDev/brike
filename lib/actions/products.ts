@@ -120,9 +120,32 @@ const productSchema = z
     details: z
       .array(z.string().trim().min(1))
       .min(1, "Add at least one detail line."),
-    colorways: z
-      .array(z.string().trim().min(1))
-      .min(1, "Add at least one colorway."),
+    // Sent as a JSON array from the colour-rows editor (name + swatch hex +
+    // which product image each colour shows).
+    colorways: z.preprocess(
+      (value) => {
+        if (Array.isArray(value)) return value;
+        try {
+          const parsed = JSON.parse(String(value ?? ""));
+          return Array.isArray(parsed) ? parsed : [];
+        } catch {
+          return [];
+        }
+      },
+      z
+        .array(
+          z.object({
+            name: z.string().trim().min(1, "Give the colour a name.").max(60),
+            hex: z
+              .string()
+              .trim()
+              .regex(/^#[0-9a-f]{6}$/i, "Pick a swatch colour."),
+            image: z.enum(["a", "b"]),
+          }),
+        )
+        .min(1, "Add at least one colour.")
+        .max(8, "Up to 8 colours per product."),
+    ),
     sizes: z.array(z.string().trim().min(1)).min(1, "Pick at least one size."),
     printType: z.enum(PATTERN_TYPES),
     printA: z.enum(PALETTE_NAMES),
@@ -174,7 +197,6 @@ function buildProductInput(formData: FormData): unknown {
     imageB: String(formData.get("imageBPath") ?? ""),
     featured: formData.get("featured") === "on",
     details: lines(String(formData.get("details") ?? "")),
-    colorways: lines(String(formData.get("colorways") ?? "")),
     sizes,
     collectionIds: formData.getAll("collectionIds").map(String),
   };

@@ -4,6 +4,7 @@ import { useActionState, useEffect, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 import Image from "next/image";
 import Link from "next/link";
+import { ImagePlus, Trash } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -16,7 +17,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import type { Colorway } from "@/data/catalog";
 import type { ActionState } from "@/lib/admin-auth";
+import { cn } from "@/lib/utils";
 import {
   BADGES,
   PALETTE_NAMES,
@@ -36,7 +39,7 @@ export interface ProductFormInitial {
   fabric: string;
   description: string;
   details: string[];
-  colorways: string[];
+  colorways: Colorway[];
   sizes: string[];
   printType: string;
   printA: string;
@@ -73,6 +76,15 @@ function slugify(value: string): string {
     .slice(0, 120);
 }
 
+/** One editable colour row in the product form. */
+type ColorwayRow = { name: string; hex: string; image: "a" | "b" };
+
+/**
+ * Tap-to-upload image card: the whole preview area is a label for the hidden
+ * file input, so tapping it opens the picker; a chosen file previews locally
+ * (over the stored image) until the save lands it in Blob storage. The path
+ * input stays for pasting an existing URL.
+ */
 function ImageSlot({
   label,
   hint,
@@ -104,45 +116,63 @@ function ImageSlot({
     setPreview(previewRef.current);
   };
 
+  const shown = preview ?? current;
+
   return (
-    <div className="space-y-1.5">
+    <div className="space-y-2">
       <Label htmlFor={pathField}>{label}</Label>
-      <div className="flex gap-3">
-        <div className="relative size-16 shrink-0 overflow-hidden rounded-md border border-border bg-meta">
-          {preview ? (
+      <label
+        htmlFor={`${fileField}-file`}
+        className="group relative flex aspect-[4/3] cursor-pointer items-center justify-center overflow-hidden rounded-lg border-2 border-dashed border-border bg-meta transition-colors hover:border-ink/40 focus-within:border-ink/60"
+      >
+        {shown ? (
+          preview ? (
             // eslint-disable-next-line @next/next/no-img-element -- local object URL preview
             <img src={preview} alt="" className="size-full object-cover" />
-          ) : current ? (
+          ) : (
             <Image
-              src={current}
+              src={shown}
               alt=""
               fill
               unoptimized
-              sizes="64px"
+              sizes="(max-width: 768px) 100vw, 40vw"
               className="object-cover"
             />
-          ) : null}
-        </div>
-        <div className="min-w-0 flex-1 space-y-1.5">
-          <Input
-            id={pathField}
-            name={pathField}
-            defaultValue={current ?? ""}
-            placeholder="/prints/… or https://…"
-          />
-          <Input
-            id={`${fileField}-file`}
-            name={fileField}
-            type="file"
-            accept="image/png,image/jpeg,image/webp"
-            aria-label={`${label} — upload file`}
-            className="text-[13px]"
-            onChange={onFile}
-          />
-          <p className="text-[11.5px] text-muted-foreground">{hint}</p>
-          <FieldError messages={errors} />
-        </div>
-      </div>
+          )
+        ) : (
+          <span className="flex flex-col items-center gap-2 px-4 text-center text-muted-foreground">
+            <ImagePlus size={26} strokeWidth={1.5} aria-hidden />
+            <span className="text-[12.5px] font-medium text-foreground">
+              Tap the card to choose an image
+            </span>
+            <span className="text-[11px]">PNG · JPEG · WebP · up to 2 MB</span>
+          </span>
+        )}
+        <span className="pointer-events-none absolute inset-x-0 bottom-0 bg-ink/80 py-1.5 text-center text-[11.5px] font-semibold text-cream opacity-0 transition-opacity group-hover:opacity-100">
+          {preview
+            ? "New image picked — save to upload"
+            : shown
+              ? "Tap to replace"
+              : "Tap to upload"}
+        </span>
+      </label>
+      <input
+        id={`${fileField}-file`}
+        name={fileField}
+        type="file"
+        accept="image/png,image/jpeg,image/webp"
+        aria-label={`${label} — upload file`}
+        className="sr-only"
+        onChange={onFile}
+      />
+      <Input
+        id={pathField}
+        name={pathField}
+        defaultValue={current ?? ""}
+        placeholder="/prints/… or https://…"
+      />
+      <p className="text-[11.5px] text-muted-foreground">{hint}</p>
+      <FieldError messages={errors} />
     </div>
   );
 }
@@ -200,6 +230,19 @@ export function ProductForm({
   const [printA, setPrintA] = useState(initial?.printA ?? PALETTE_NAMES[0]);
   const [printB, setPrintB] = useState(initial?.printB ?? PALETTE_NAMES[1]);
   const [badge, setBadge] = useState(initial?.badge ?? "");
+
+  // Structured colour rows (name + swatch hex + which product image it shows).
+  // Prefill one blank row on create so the first colour can be typed straight
+  // away; the list serialises to a hidden `colorways` JSON input on submit.
+  const [colorwayRows, setColorwayRows] = useState<ColorwayRow[]>(() =>
+    initial && initial.colorways.length > 0
+      ? initial.colorways.map((c) => ({ name: c.name, hex: c.hex, image: c.image }))
+      : [{ name: "", hex: "#16233c", image: "a" }],
+  );
+  const updateColorway = (index: number, patch: Partial<ColorwayRow>) =>
+    setColorwayRows((rows) =>
+      rows.map((row, i) => (i === index ? { ...row, ...patch } : row)),
+    );
 
   const knownSizes = initial
     ? initial.sizes.filter((s) =>
@@ -344,18 +387,94 @@ export function ProductForm({
             </p>
             <FieldError messages={state.fieldErrors?.details} />
           </div>
-          <div className="space-y-1.5 md:col-span-2">
-            <Label htmlFor="colorways">Colorways (one per line)</Label>
-            <Textarea
-              id="colorways"
-              name="colorways"
-              rows={2}
-              defaultValue={initial?.colorways.join("\n") ?? ""}
-              placeholder={"Midnight navy multi\nBlush multi"}
-            />
-            <FieldError messages={state.fieldErrors?.colorways} />
-          </div>
         </div>
+      </section>
+
+      {/* ---- colours ---- */}
+      <section className="space-y-4 rounded-xl bg-card p-5 ring-1 ring-foreground/10">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 className="text-base font-medium">Colours</h2>
+            <p className="mt-1 text-[11.5px] text-muted-foreground">
+              Each colour becomes a swatch circle on the product page — tapping
+              it swaps the main image to the colour&apos;s photo.
+            </p>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() =>
+              setColorwayRows((rows) => [
+                ...rows,
+                { name: "", hex: "#c9c2b6", image: rows.length % 2 === 0 ? "a" : "b" },
+              ])
+            }
+          >
+            Add colour
+          </Button>
+        </div>
+        <input
+          type="hidden"
+          name="colorways"
+          value={JSON.stringify(colorwayRows)}
+          readOnly
+        />
+        <div className="space-y-2">
+          {colorwayRows.map((row, i) => (
+            <div
+              key={i}
+              className="flex flex-wrap items-center gap-3 rounded-lg border border-border p-3"
+            >
+              <input
+                type="color"
+                value={row.hex}
+                aria-label={`Colour ${i + 1} swatch`}
+                onChange={(e) => updateColorway(i, { hex: e.target.value })}
+                className="size-10 shrink-0 cursor-pointer rounded-md border border-input bg-white p-1"
+              />
+              <Input
+                aria-label={`Colour ${i + 1} name`}
+                value={row.name}
+                placeholder="Midnight navy multi"
+                onChange={(e) => updateColorway(i, { name: e.target.value })}
+                className="min-w-40 flex-1"
+              />
+              <div className="flex overflow-hidden rounded-md border border-input">
+                {(["a", "b"] as const).map((key) => (
+                  <button
+                    key={key}
+                    type="button"
+                    aria-label={`Colour ${i + 1} — use image ${key.toUpperCase()}`}
+                    aria-pressed={row.image === key}
+                    onClick={() => updateColorway(i, { image: key })}
+                    className={cn(
+                      "px-3 py-2 text-[12.5px] font-medium transition-colors",
+                      row.image === key
+                        ? "bg-ink text-cream"
+                        : "bg-white hover:bg-meta",
+                    )}
+                  >
+                    {key === "a" ? "Image A" : "Image B"}
+                  </button>
+                ))}
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                aria-label={`Remove colour ${i + 1}`}
+                disabled={colorwayRows.length <= 1}
+                onClick={() =>
+                  setColorwayRows((rows) => rows.filter((_, index) => index !== i))
+                }
+              >
+                <Trash size={15} aria-hidden />
+              </Button>
+            </div>
+          ))}
+        </div>
+        <FieldError messages={state.fieldErrors?.colorways} />
       </section>
 
       {/* ---- pricing ---- */}

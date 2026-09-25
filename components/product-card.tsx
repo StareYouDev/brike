@@ -22,6 +22,12 @@ export function ProductCard({
 }) {
   const onSale = typeof product.compareAt === "number";
   const images = productImages(product);
+  // Alt text names the colour actually shown by each image.
+  const altFor = (image: "a" | "b") =>
+    product.colorways.find((c) => c.image === image)?.name ??
+    product.colorways[image === "a" ? 0 : 1]?.name ??
+    product.colorways[0]?.name ??
+    "colour";
 
   return (
     <article className={cn("group relative flex flex-col", className)}>
@@ -32,7 +38,7 @@ export function ProductCard({
       >
         <Image
           src={images.a}
-          alt={`${product.name} in ${product.colorways[0]}`}
+          alt={`${product.name} in ${altFor("a")}`}
           fill
           sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
           priority={priority}
@@ -41,7 +47,7 @@ export function ProductCard({
         />
         <Image
           src={images.b}
-          alt={`${product.name} in ${product.colorways[1] ?? product.colorways[0]}`}
+          alt={`${product.name} in ${altFor("b")}`}
           fill
           sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
           unoptimized

@@ -36,6 +36,79 @@ export interface Print {
   b: PaletteName;
 }
 
+/**
+ * One selectable colour on a product. `hex` paints the PDP swatch circle
+ * (the colour itself — never a photo) and `image` picks which of the two
+ * product images that colour shows when tapped.
+ */
+export interface Colorway {
+  name: string;
+  hex: string;
+  image: "a" | "b";
+}
+
+/** Swatch palette — first matching word in the colourway name wins. */
+const SWATCH_COLOURS: Record<string, string> = {
+  navy: "#16233c",
+  blush: "#f3cfc3",
+  sage: "#dbe3d2",
+  cherry: "#a3242f",
+  butter: "#f4d987",
+  lilac: "#ded6ef",
+  teal: "#1f5f5b",
+  rust: "#c4622d",
+  ink: "#1d1d1b",
+  sky: "#cfe0ea",
+  olive: "#6b7346",
+  midnight: "#16233c",
+  cream: "#efe7dc",
+  scarlet: "#d13b3b",
+  red: "#a3242f",
+  yellow: "#f4d987",
+  black: "#1d1d1b",
+  white: "#f6f2ea",
+  rose: "#e7a49b",
+};
+
+const HEX_RE = /^#[0-9a-f]{6}$/i;
+
+/** Derives a swatch colour from a colourway name ("Midnight navy multi" → navy). */
+export function swatchHex(name: string): string {
+  for (const word of name.toLowerCase().split(/[^a-z]+/)) {
+    const hex = SWATCH_COLOURS[word];
+    if (hex) return hex;
+  }
+  return "#c9c2b6";
+}
+
+/**
+ * Reads a colourways column. Older rows (and the static catalog) hold plain
+ * name strings; the admin now writes structured rows — both shapes land on
+ * the same Colorway[] the UI expects.
+ */
+export function normalizeColorways(
+  raw: ReadonlyArray<string | Colorway>,
+): Colorway[] {
+  return raw.map((entry, index): Colorway => {
+    // Legacy mapping kept: first colour → image A, the rest → image B.
+    const fallbackImage = index % 2 === 0 ? "a" : "b";
+    if (typeof entry === "string") {
+      return { name: entry, hex: swatchHex(entry), image: fallbackImage };
+    }
+    const name = String(entry?.name ?? "").trim() || `Colour ${index + 1}`;
+    const hex =
+      typeof entry?.hex === "string" && HEX_RE.test(entry.hex)
+        ? entry.hex.toLowerCase()
+        : swatchHex(name);
+    return { name, hex, image: entry?.image === "b" ? "b" : "a" };
+  });
+}
+
+/** Static-catalog builder: colourway names → structured rows. */
+export function mkColorways(...names: string[]): Colorway[] {
+  return normalizeColorways(names);
+}
+
 export interface Product {
   slug: string;
   name: string;
@@ -46,7 +119,7 @@ export interface Product {
   style: string;
   fabric: string;
   sizes: string[];
-  colorways: string[];
+  colorways: Colorway[];
   description: string;
   details: string[];
   print: Print;
@@ -174,7 +247,7 @@ export const products: Product[] = [
     style: "Traditional Long",
     fabric: "Cotton",
     sizes: womensSizes,
-    colorways: ["Midnight navy multi", "Blush multi"],
+    colorways: mkColorways("Midnight navy multi", "Blush multi"),
     description:
       "Our signature sun, moon and stars scattered across a harlequin check — a playful celestial print on crisp, breathable cotton that only gets softer with every wash.",
     details: [
@@ -196,7 +269,7 @@ export const products: Product[] = [
     style: "Traditional Long",
     fabric: "Cotton",
     sizes: womensSizes,
-    colorways: ["Blush rose multi", "Navy rose multi"],
+    colorways: mkColorways("Blush rose multi", "Navy rose multi"),
     description:
       "Ditsy roses drawn by hand and repeated all over — a romantic, vintage-feel print on our softest cotton for slow, flower-filled mornings.",
     details: [
@@ -218,7 +291,7 @@ export const products: Product[] = [
     style: "Traditional Long",
     fabric: "Brushed Cotton",
     sizes: womensSizes,
-    colorways: ["Midnight navy", "Cherry red"],
+    colorways: mkColorways("Midnight navy", "Cherry red"),
     description:
       "Brushed cotton on the inside, bold gingham on the outside — a winter-weight set that feels like a hug at bedtime.",
     details: [
@@ -240,7 +313,7 @@ export const products: Product[] = [
     style: "Capri",
     fabric: "Cotton Voile",
     sizes: womensSizes,
-    colorways: ["Blush stripe", "Sky stripe"],
+    colorways: mkColorways("Blush stripe", "Sky stripe"),
     description:
       "Featherweight cotton voile with candy stripes and a cropped capri trouser — made for warm nights and open windows.",
     details: [
@@ -262,7 +335,7 @@ export const products: Product[] = [
     style: "Traditional Long",
     fabric: "Cotton Voile",
     sizes: womensSizes,
-    colorways: ["Sage meadow", "Cream meadow"],
+    colorways: mkColorways("Sage meadow", "Cream meadow"),
     description:
       "A meadow of hand-drawn wildflowers drifting across airy cotton voile — our most delicate print, cut into our classic long silhouette.",
     details: [
@@ -284,7 +357,7 @@ export const products: Product[] = [
     style: "Oversized",
     fabric: "Cotton Gauze",
     sizes: womensSizes,
-    colorways: ["Buttercup yellow", "Ink black"],
+    colorways: mkColorways("Buttercup yellow", "Ink black"),
     description:
       "Double-layer cotton gauze in a sunny window-pane check, cut oversized for that just-stole-his-pyjamas feeling.",
     details: [
@@ -308,7 +381,7 @@ export const products: Product[] = [
     style: "Nightdress",
     fabric: "Cotton",
     sizes: womensSizes,
-    colorways: ["Scarlet spot", "Navy spot"],
+    colorways: mkColorways("Scarlet spot", "Navy spot"),
     description:
       "Playful polka dots on a breezy A-line nightdress with a scalloped hem — easy, pretty, effortless.",
     details: [
@@ -330,7 +403,7 @@ export const products: Product[] = [
     style: "Traditional Long",
     fabric: "Satin",
     sizes: womensSizes,
-    colorways: ["Teal hummingbird", "Ink hummingbird"],
+    colorways: mkColorways("Teal hummingbird", "Ink hummingbird"),
     description:
       "Cool-to-the-touch satin strewn with hummingbirds and hidden blossoms — our special-occasion set for midwinter parties and slow recovery mornings.",
     details: [
@@ -352,7 +425,7 @@ export const products: Product[] = [
     style: "Traditional Long",
     fabric: "Brushed Cotton",
     sizes: mensSizes,
-    colorways: ["Harbour navy", "Rust navy"],
+    colorways: mkColorways("Harbour navy", "Rust navy"),
     description:
       "Nautical stripes on brushed cotton flannel — a proper men's pyjama with a collared shirt, chest pocket and zero fuss.",
     details: [
@@ -374,7 +447,7 @@ export const products: Product[] = [
     style: "Traditional Long",
     fabric: "Cotton",
     sizes: mensSizes,
-    colorways: ["Olive check", "Sky check"],
+    colorways: mkColorways("Olive check", "Sky check"),
     description:
       "An olive window-pane check drawn from a favourite old dressing gown — crisp cotton, relaxed fit, quietly handsome.",
     details: [
@@ -396,7 +469,7 @@ export const products: Product[] = [
     style: "Traditional Long",
     fabric: "Satin",
     sizes: mensSizes,
-    colorways: ["Ink celestial", "Teal celestial"],
+    colorways: mkColorways("Ink celestial", "Teal celestial"),
     description:
       "Our celestial harlequin reimagined in ink — a fluid satin set named for late-night records and one more chapter.",
     details: [
@@ -418,7 +491,7 @@ export const products: Product[] = [
     style: "Traditional Long",
     fabric: "Brushed Cotton",
     sizes: kidsSizes,
-    colorways: ["Lilac star trail", "Navy star trail"],
+    colorways: mkColorways("Lilac star trail", "Navy star trail"),
     description:
       "A trail of stars, moons and tiny planets across brushed cotton — cosy enough to make bedtime the best part of the day.",
     details: [
@@ -440,7 +513,7 @@ export const products: Product[] = [
     style: "Short",
     fabric: "Cotton",
     sizes: kidsSizes,
-    colorways: ["Teal rainbow", "Cherry rainbow"],
+    colorways: mkColorways("Teal rainbow", "Cherry rainbow"),
     description:
       "Short sleeves, short trousers, maximum colour — a bright check for wriggly sleepers and summer bedtimes.",
     details: [
@@ -462,7 +535,7 @@ export const products: Product[] = [
     style: "Traditional Long",
     fabric: "Cotton",
     sizes: kidsSizes,
-    colorways: ["Blush little bloom", "Sage little bloom"],
+    colorways: mkColorways("Blush little bloom", "Sage little bloom"),
     description:
       "Miniature roses the size of confetti — a soft cotton set for the littlest nibs, with proper pockets for treasure collecting.",
     details: [
@@ -483,7 +556,7 @@ export const products: Product[] = [
     style: "Traditional Long",
     fabric: "Brushed Cotton",
     sizes: kidsSizes,
-    colorways: ["Sky snowfall", "Cherry snowfall"],
+    colorways: mkColorways("Sky snowfall", "Cherry snowfall"),
     description:
       "Hand-drawn snowflakes drifting over brushed cotton — the Christmas-morning pyjamas, unwrapped the night before, of course.",
     details: [
@@ -505,7 +578,7 @@ export const products: Product[] = [
     style: "Traditional Long",
     fabric: "Brushed Cotton",
     sizes: womensSizes,
-    colorways: ["Cherry harlequin", "Sage harlequin"],
+    colorways: mkColorways("Cherry harlequin", "Sage harlequin"),
     description:
       "Our harlequin print dressed in festive cherry and gold — brushed cotton for cold floors, slow mornings and paper-opening at eight.",
     details: [
@@ -527,7 +600,7 @@ export const products: Product[] = [
     style: "Traditional Long",
     fabric: "Brushed Cotton",
     sizes: womensSizes,
-    colorways: ["Cherry gingham", "Sage gingham"],
+    colorways: mkColorways("Cherry gingham", "Sage gingham"),
     description:
       "Picnic gabbage in winter colours — a brushed-cotton set that works from December right through to spring.",
     details: [
@@ -550,7 +623,7 @@ export const products: Product[] = [
     style: "Nightdress",
     fabric: "Cotton Gauze",
     sizes: womensSizes,
-    colorways: ["Rust winter leaf", "Ink winter leaf"],
+    colorways: mkColorways("Rust winter leaf", "Ink winter leaf"),
     description:
       "A long, lazy nightshirt in double gauze, printed with falling leaves — for reading in bed long past the alarm.",
     details: [
@@ -572,7 +645,7 @@ export const products: Product[] = [
     style: "Matching Set",
     fabric: "Cotton",
     sizes: [...womensSizes, ...kidsSizes],
-    colorways: ["Midnight star", "Blush star"],
+    colorways: mkColorways("Midnight star", "Blush star"),
     description:
       "One star print, every size from 2 to XL — matching sets for the whole family, made for the photograph and kept for years.",
     details: [
@@ -594,7 +667,7 @@ export const products: Product[] = [
     style: "Matching Set",
     fabric: "Brushed Cotton",
     sizes: [...womensSizes, ...kidsSizes],
-    colorways: ["Blush check", "Navy check"],
+    colorways: mkColorways("Blush check", "Navy check"),
     description:
       "The window-pane check in blush and navy, sized for everyone — Christmasses, birthdays and all the ordinary Tuesdays.",
     details: [

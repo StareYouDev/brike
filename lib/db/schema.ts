@@ -18,6 +18,7 @@ import {
   timestamp,
   uuid,
 } from "drizzle-orm/pg-core";
+import type { Colorway } from "@/data/catalog";
 
 export const users = pgTable("users", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -55,7 +56,8 @@ export const products = pgTable("products", {
   fabric: text("fabric").notNull(),
   description: text("description").notNull(),
   details: jsonb("details").$type<string[]>().notNull(),
-  colorways: jsonb("colorways").$type<string[]>().notNull(),
+  /** Structured rows now; legacy rows hold plain name strings (normalize on read). */
+  colorways: jsonb("colorways").$type<Array<string | Colorway>>().notNull(),
   sizes: jsonb("sizes").$type<string[]>().notNull(),
   printType: text("print_type").notNull(),
   printA: text("print_a").notNull(),

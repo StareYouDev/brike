@@ -19,7 +19,8 @@ async function login(page: Page) {
 }
 
 async function fillProductBasics(page: Page, name: string, slug: string) {
-  await page.getByLabel("Name").fill(name);
+  // exact: — "Colour 1 name" also contains "Name" (substring matching).
+  await page.getByLabel("Name", { exact: true }).fill(name);
   await page.getByLabel("Slug (URL)").fill(slug);
   await page.getByLabel("Price (£)").fill("12.50");
   await page
@@ -30,7 +31,7 @@ async function fillProductBasics(page: Page, name: string, slug: string) {
   await page
     .getByLabel("Details (one per line)")
     .fill("Automated test detail line\nSecond detail line");
-  await page.getByLabel("Colorways (one per line)").fill("Ink multi");
+  await page.getByLabel("Colour 1 name").fill("Ink multi");
   await page.getByLabel("M", { exact: true }).check();
   // Tick the STABLE "New In" collection by name — never .first(): a parallel
   // test's temporary collection can sort first and then get deleted before
@@ -303,7 +304,9 @@ test("a failed save keeps the typed edits and the chosen image", async ({
   await page.getByRole("button", { name: "Create product" }).click();
 
   await expect(page.getByText("Pick at least one collection.")).toBeVisible();
-  expect(await page.getByLabel("Name").inputValue()).toBe(name);
+  expect(
+    await page.getByLabel("Name", { exact: true }).inputValue(),
+  ).toBe(name);
   expect(await page.getByLabel("Slug (URL)").inputValue()).toBe(slug);
   expect(await page.getByLabel("Description").inputValue()).toBe(
     "A throwaway product created by the automated tests only.",

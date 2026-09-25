@@ -16,7 +16,8 @@ import {
   productCollections,
   products as productsTable,
 } from "@/lib/db/schema";
-import type { Collection, Product } from "@/data/catalog";
+import type { Collection, Colorway, Product } from "@/data/catalog";
+import { normalizeColorways } from "@/data/catalog";
 
 export { collectionImage, productImages } from "@/lib/images";
 
@@ -41,7 +42,7 @@ function toProduct(
     style: row.style,
     fabric: row.fabric,
     sizes: row.sizes,
-    colorways: row.colorways,
+    colorways: normalizeColorways(row.colorways),
     description: row.description,
     details: row.details,
     print: { type: row.printType as Product["print"]["type"], a: row.printA as Product["print"]["a"], b: row.printB as Product["print"]["b"] },
@@ -231,7 +232,7 @@ export interface AdminProductDetail
   fabric: string;
   description: string;
   details: string[];
-  colorways: string[];
+  colorways: Colorway[];
   sizes: string[];
   printType: string;
   printA: string;
@@ -317,7 +318,7 @@ export async function getAdminProduct(
     fabric: row.fabric,
     description: row.description,
     details: row.details,
-    colorways: row.colorways,
+    colorways: normalizeColorways(row.colorways),
     sizes: row.sizes,
     printType: row.printType,
     printA: row.printA,

@@ -6,17 +6,19 @@ import { Check, ShoppingBag } from "lucide-react";
 import { useCart } from "@/store/cart";
 import { formatPrice, type Product } from "@/data/catalog";
 import { productImages } from "@/lib/images";
+import { useColorway } from "@/components/colorway-picker";
 import { cn } from "@/lib/utils";
 
 export function AddToCart({ product }: { product: Product }) {
   const addItem = useCart((s) => s.addItem);
+  const { colorways, index: colorway, select } = useColorway();
   const [size, setSize] = useState<string | null>(null);
-  const [colorway, setColorway] = useState(0);
   const [qty, setQty] = useState(1);
   const [error, setError] = useState(false);
 
+  const selected = colorways[colorway] ?? colorways[0];
   const images = productImages(product);
-  const image = colorway === 0 ? images.a : images.b;
+  const image = images[selected?.image === "b" ? "b" : "a"];
 
   const add = () => {
     if (!size) {
@@ -30,7 +32,7 @@ export function AddToCart({ product }: { product: Product }) {
         name: product.name,
         price: product.price,
         size,
-        colorway: product.colorways[colorway],
+        colorway: selected?.name ?? product.name,
         image,
       },
       qty,
@@ -40,40 +42,37 @@ export function AddToCart({ product }: { product: Product }) {
   return (
     <div className="space-y-6">
       {/* colourway */}
-      <div>
-        <p className="mb-2.5 text-[12.5px] font-semibold tracking-[0.14em] text-ink uppercase">
-          Colour:{" "}
-          <span className="font-normal tracking-normal text-muted-foreground normal-case">
-            {product.colorways[colorway]}
-          </span>
-        </p>
-        <div className="flex gap-2.5">
-          {product.colorways.map((cw, i) => (
-            <button
-              key={cw}
-              type="button"
-              aria-label={`Select colour ${cw}`}
-              aria-pressed={colorway === i}
-              onClick={() => setColorway(i)}
-              className={cn(
-                "relative h-11 w-11 overflow-hidden rounded-full border-2 transition-all",
-                colorway === i
-                  ? "border-ink ring-2 ring-ink/20"
-                  : "border-transparent hover:border-ink/30",
-              )}
-            >
-              <span
-                className="absolute inset-0"
-                style={{
-                  backgroundImage: `url(${i === 0 ? images.a : images.b})`,
-                  backgroundSize: "cover",
-                  backgroundPosition: "center",
-                }}
-              />
-            </button>
-          ))}
+      {selected ? (
+        <div>
+          <p className="mb-2.5 text-[12.5px] font-semibold tracking-[0.14em] text-ink uppercase">
+            Colour:{" "}
+            <span className="font-normal tracking-normal text-muted-foreground normal-case">
+              {selected.name}
+            </span>
+          </p>
+          <div className="flex gap-2.5">
+            {colorways.map((cw, i) => (
+              <button
+                key={`${cw.name}-${i}`}
+                type="button"
+                aria-label={`Select colour ${cw.name}`}
+                aria-pressed={colorway === i}
+                onClick={() => select(i)}
+                title={cw.name}
+                style={{ backgroundColor: cw.hex }}
+                className={cn(
+                  "size-11 rounded-full border-2 transition-all",
+                  colorway === i
+                    ? "border-ink ring-2 ring-ink/20"
+                    : "border-white/70 hover:border-ink/40",
+                )}
+              >
+                <span className="sr-only">{cw.name}</span>
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
+      ) : null}
 
       {/* size */}
       <div>
@@ -82,7 +81,7 @@ export function AddToCart({ product }: { product: Product }) {
             Size
           </p>
           <Link
-            href="/contact#size-guide"
+            href="/size-guide"
             className="text-[13px] text-peach-deep underline underline-offset-2"
           >
             Size guide

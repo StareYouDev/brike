@@ -1,8 +1,11 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import Image from "next/image";
 import { Breadcrumb } from "@/components/breadcrumb";
 import { AddToCart } from "@/components/add-to-cart";
+import {
+  ColorwayProvider,
+  ProductGallery,
+} from "@/components/colorway-picker";
 import { ProductCard } from "@/components/product-card";
 import { Reveal } from "@/components/reveal";
 import { Stars } from "@/components/stars";
@@ -70,45 +73,16 @@ export default async function ProductPage({
         ]}
       />
 
-      <div className="mt-6 grid gap-10 lg:grid-cols-2 lg:gap-14">
-        {/* gallery */}
-        <div className="flex flex-col gap-3 lg:flex-row-reverse">
-          <div className="relative aspect-[4/5] flex-1 overflow-hidden bg-meta">
-            <Image
-              src={images.a}
-              alt={`${product.name} — ${product.colorways[0]}`}
-              fill
-              priority
-              unoptimized
-              sizes="(max-width: 1024px) 100vw, 50vw"
-              className="object-cover"
-            />
-            {product.badge ? (
-              <span className="absolute top-4 left-4 rounded-full bg-ink px-3.5 py-1.5 text-[10.5px] font-semibold tracking-[0.14em] text-cream uppercase">
-                {product.badge}
-              </span>
-            ) : null}
-          </div>
-          <div className="flex gap-3 lg:flex-col">
-            {(["a", "b"] as const).map((variant, i) => (
-              <div
-                key={variant}
-                className="relative aspect-square w-1/3 shrink-0 overflow-hidden bg-meta lg:aspect-[4/5] lg:w-24"
-              >
-                <Image
-                  src={i === 0 ? images.a : images.b}
-                  alt={`${product.name} — ${product.colorways[i] ?? product.colorways[0]}`}
-                  fill
-                  unoptimized
-                  sizes="96px"
-                  className="object-cover"
-                />
-              </div>
-            ))}
-          </div>
-        </div>
+      <ColorwayProvider colorways={product.colorways}>
+        <div className="mt-6 grid gap-10 lg:grid-cols-2 lg:gap-14">
+          {/* gallery — follows the colour selected in the buy panel */}
+          <ProductGallery
+            name={product.name}
+            badge={product.badge ?? null}
+            images={images}
+          />
 
-        {/* details */}
+          {/* details */}
         <div className="lg:sticky lg:top-40 lg:self-start">
           <p className="text-[11.5px] font-semibold tracking-[0.2em] text-muted-foreground uppercase">
             {product.fabric} · {product.style}
@@ -189,8 +163,9 @@ export default async function ProductPage({
               </AccordionContent>
             </AccordionItem>
           </Accordion>
+          </div>
         </div>
-      </div>
+      </ColorwayProvider>
 
       {related.length > 0 ? (
         <section className="mt-20">

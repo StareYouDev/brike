@@ -7,25 +7,8 @@ import { site } from "@/data/catalog";
 
 export const metadata: Metadata = {
   title: "Contact & Delivery",
-  description: "Get in touch with BRIKE — delivery, returns, size guide and customer care.",
+  description: "Get in touch with BRIKE — delivery, returns and customer care.",
 };
-
-const sizeRows = [
-  ["XS", "UK 6–8", "80–84 cm", "62–66 cm"],
-  ["S", "UK 8–10", "84–88 cm", "66–70 cm"],
-  ["M", "UK 10–12", "88–94 cm", "70–76 cm"],
-  ["L", "UK 12–14", "94–100 cm", "76–82 cm"],
-  ["XL", "UK 14–16", "100–106 cm", "82–88 cm"],
-  ["XXL (men’s)", "UK 16–18", "106–112 cm", "88–94 cm"],
-];
-
-const kidsRows = [
-  ["2–3Y", "92–98 cm", "50–52 cm"],
-  ["4–5Y", "104–110 cm", "53–55 cm"],
-  ["6–7Y", "116–122 cm", "56–58 cm"],
-  ["8–9Y", "128–134 cm", "60–63 cm"],
-  ["10–11Y", "140–146 cm", "65–68 cm"],
-];
 
 export default function ContactPage() {
   return (
@@ -131,64 +114,6 @@ export default function ContactPage() {
                 <p className="mt-2 text-[14.5px] text-foreground/75">{c.d}</p>
               </div>
             ))}
-          </div>
-        </Reveal>
-      </section>
-
-      {/* size guide */}
-      <section id="size-guide" className="mt-16 scroll-mt-40">
-        <Reveal>
-          <h2 className="font-heading text-h2">Size guide</h2>
-          <p className="mt-3 max-w-2xl text-[15.5px] text-foreground/75">
-            Our pyjamas are cut for a relaxed fit — if you&apos;re between sizes, size
-            down for a neater line or stay put for maximum cosiness. Inside leg on
-            traditional pyjamas is 76 cm; waists are elasticated unless stated.
-          </p>
-          <div className="mt-6 overflow-x-auto">
-            <table className="w-full min-w-[560px] border-collapse text-[14.5px]">
-              <thead>
-                <tr className="border-b-2 border-ink text-left">
-                  <th className="py-3 pr-4 font-semibold">Size</th>
-                  <th className="py-3 pr-4 font-semibold">UK dress size</th>
-                  <th className="py-3 pr-4 font-semibold">Bust / chest</th>
-                  <th className="py-3 font-semibold">Waist</th>
-                </tr>
-              </thead>
-              <tbody>
-                {sizeRows.map((row) => (
-                  <tr key={row[0]} className="border-b border-border">
-                    {row.map((cell, i) => (
-                      <td key={i} className={`py-3 pr-4 ${i === 0 ? "font-medium" : "text-foreground/75"}`}>
-                        {cell}
-                      </td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          <div className="mt-8 overflow-x-auto">
-            <table className="w-full min-w-[440px] border-collapse text-[14.5px]">
-              <thead>
-                <tr className="border-b-2 border-ink text-left">
-                  <th className="py-3 pr-4 font-semibold">Kids size</th>
-                  <th className="py-3 pr-4 font-semibold">Height</th>
-                  <th className="py-3 font-semibold">Chest</th>
-                </tr>
-              </thead>
-              <tbody>
-                {kidsRows.map((row) => (
-                  <tr key={row[0]} className="border-b border-border">
-                    {row.map((cell, i) => (
-                      <td key={i} className={`py-3 pr-4 ${i === 0 ? "font-medium" : "text-foreground/75"}`}>
-                        {cell}
-                      </td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
           </div>
         </Reveal>
       </section>

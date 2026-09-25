@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { inArray } from "drizzle-orm";
 import { z } from "zod";
+import { normalizeColorways } from "@/data/catalog";
 import { isDuplicateKeyError, type ActionState } from "@/lib/admin-auth";
 import { deliveryPenceFor, newOrderCode } from "@/lib/checkout";
 import { getDb } from "@/lib/db";
@@ -113,15 +114,16 @@ export async function placeOrderAction(
     if (!product.sizes.includes(line.size)) {
       return { error: `${product.name} isn't available in size ${line.size}.` };
     }
-    if (!product.colorways.includes(line.colorway)) {
+    const colorways = normalizeColorways(product.colorways);
+    if (!colorways.some((c) => c.name === line.colorway)) {
       return {
         error: `${product.name} has no colourway called ${line.colorway}.`,
       };
     }
   }
 
-  // Snapshot lines for order_items — mirrors how AddToCart picks a variant
-  // image (first colourway → art A, others → art B).
+  // Snapshot lines for order_items — the variant image is whichever art the
+  // selected colourway shows (mirrors AddToCart on the product page).
   const items = basket.map((line) => {
     const product = bySlug.get(line.slug)!;
     const images = productImages({
@@ -129,7 +131,9 @@ export async function placeOrderAction(
       imageA: product.imageA ?? undefined,
       imageB: product.imageB ?? undefined,
     });
-    const colorwayIndex = product.colorways.indexOf(line.colorway);
+    const variant = normalizeColorways(product.colorways).find(
+      (c) => c.name === line.colorway,
+    );
     return {
       productId: product.id,
       slug: product.slug,
@@ -138,7 +142,7 @@ export async function placeOrderAction(
       colorway: line.colorway,
       qty: line.qty,
       unitPricePence: product.pricePence,
-      image: colorwayIndex <= 0 ? images.a : images.b,
+      image: variant?.image === "b" ? images.b : images.a,
     };
   });
 
