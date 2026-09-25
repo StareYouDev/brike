@@ -10,6 +10,7 @@ import {
 import { isOrderStatus, ORDER_TRANSITIONS } from "@/lib/admin-form";
 import { getDb } from "@/lib/db";
 import { orderItems, orders, productStock } from "@/lib/db/schema";
+import { orderShippedEmail, sendEmail } from "@/lib/email";
 
 /**
  * Cash-on-delivery fulfilment flow. Transitions are validated against the
@@ -29,7 +30,12 @@ export async function updateOrderStatusAction(
 
   const db = await getDb();
   const [current] = await db
-    .select({ status: orders.status })
+    .select({
+      status: orders.status,
+      code: orders.code,
+      name: orders.name,
+      email: orders.email,
+    })
     .from(orders)
     .where(eq(orders.id, id))
     .limit(1);
@@ -90,5 +96,17 @@ export async function updateOrderStatusAction(
   }
 
   revalidatePath("/", "layout");
+
+  // "On its way" notice — best-effort after the committed transition
+  // (sendEmail never throws; a mail fault can't fail the status change).
+  if (status === "shipped") {
+    await sendEmail(
+      orderShippedEmail({
+        code: current.code,
+        name: current.name,
+        email: current.email,
+      }),
+    );
+  }
   return {};
 }

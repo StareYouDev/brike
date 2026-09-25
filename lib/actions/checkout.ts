@@ -7,6 +7,11 @@ import { z } from "zod";
 import { normalizeColorways } from "@/data/catalog";
 import { isDuplicateKeyError, type ActionState } from "@/lib/admin-auth";
 import { deliveryPenceFor, newOrderCode } from "@/lib/checkout";
+import {
+  newOrderAlertEmail,
+  orderConfirmationEmail,
+  sendEmail,
+} from "@/lib/email";
 import { getDb } from "@/lib/db";
 import {
   orderItems,
@@ -217,6 +222,7 @@ export async function placeOrderAction(
   };
 
   let orderCode = "";
+  let orderId = "";
   let placed = false;
   for (let attempt = 0; attempt < 3 && !placed; attempt++) {
     orderCode = newOrderCode();
@@ -250,6 +256,7 @@ export async function placeOrderAction(
           .insert(orders)
           .values({ code: orderCode, ...order })
           .returning({ id: orders.id });
+        orderId = row.id;
         await tx
           .insert(orderItems)
           .values(items.map((item) => ({ ...item, orderId: row.id })));
@@ -272,6 +279,14 @@ export async function placeOrderAction(
   if (!placed) {
     return { error: "We couldn't place your order — please try again." };
   }
+
+  // Transactional emails run strictly AFTER the commit, best-effort:
+  // sendEmail never throws, so a mail fault can't lose an order that has
+  // already succeeded (it logs and no-ops without RESEND_API_KEY too).
+  await Promise.all([
+    sendEmail(orderConfirmationEmail({ ...order, code: orderCode }, items)),
+    sendEmail(newOrderAlertEmail({ ...order, code: orderCode }, items, orderId)),
+  ]);
 
   // Outside every catch: redirect() throws NEXT_REDIRECT, which must escape.
   revalidatePath("/", "layout");

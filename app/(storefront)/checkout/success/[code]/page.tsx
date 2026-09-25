@@ -6,6 +6,7 @@ import { Banknote, Check } from "lucide-react";
 import { ClearCart } from "@/components/clear-cart";
 import { formatPrice } from "@/data/catalog";
 import { ORDER_CODE_RE } from "@/lib/checkout";
+import { emailsEnabled } from "@/lib/email";
 import { getOrderByCode } from "@/lib/queries";
 
 export const metadata: Metadata = {
@@ -125,8 +126,10 @@ export default async function OrderConfirmationPage({
           {order.country}
         </p>
         <p className="mt-3 text-[13.5px] text-muted-foreground">
-          Questions about the order? Reply to your confirmation email or call
-          the studio — quote reference {order.code}.
+          {emailsEnabled()
+            ? "Questions about the order? Reply to your confirmation email or call the studio — quote reference "
+            : "Questions about the order? Call the studio — quote reference "}
+          {order.code}.
         </p>
       </section>
 
