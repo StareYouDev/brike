@@ -2,9 +2,12 @@
 
 import { revalidatePath } from "next/cache";
 import { asc, eq, sql } from "drizzle-orm";
-import { requireAdmin, type ActionState } from "@/lib/admin-auth";
+import { parseUuid, requireAdmin, type ActionState } from "@/lib/admin-auth";
 import { getDb } from "@/lib/db";
 import { announcements } from "@/lib/db/schema";
+
+/** Same order as the list queries — id breaks ties between equal sorts. */
+const byDisplayOrder = [asc(announcements.sortOrder), asc(announcements.id)];
 
 function readText(formData: FormData): string | ActionState {
   const text = String(formData.get("text") ?? "").trim();
@@ -87,6 +90,63 @@ export async function listAnnouncementOrder(): Promise<string[]> {
   const rows = await db
     .select({ id: announcements.id })
     .from(announcements)
-    .orderBy(asc(announcements.sortOrder));
+    .orderBy(...byDisplayOrder);
   return rows.map((r) => r.id);
+}
+
+/**
+ * Persist a drag-and-drop reorder of the visible *slice* of the list
+ * (mirrors reorderProductsAction): `ids` is the page's ids in order,
+ * `offset` where the page starts globally. The slice's *membership* must
+ * match the server's current order — order is exactly what this call
+ * changes, but an announcement added/removed elsewhere since the render
+ * makes the sets differ, so we reject with the "list changed" error the UI
+ * rolls back on rather than scrambling the marquee.
+ */
+export async function reorderAnnouncementsAction(
+  ids: string[],
+  offset: number,
+): Promise<ActionState> {
+  await requireAdmin();
+  if (
+    !Array.isArray(ids) ||
+    ids.length === 0 ||
+    ids.length > 100 ||
+    !Number.isInteger(offset) ||
+    offset < 0 ||
+    new Set(ids).size !== ids.length ||
+    ids.some((id) => typeof id !== "string" || !parseUuid(id))
+  ) {
+    return { error: "That order isn't valid." };
+  }
+
+  const db = await getDb();
+  try {
+    const existing = await db
+      .select({ id: announcements.id })
+      .from(announcements)
+      .orderBy(...byDisplayOrder);
+    const current = existing.map((row) => row.id);
+    const slice = current.slice(offset, offset + ids.length);
+    const sliceIds = new Set(slice);
+    if (slice.length !== ids.length || !ids.every((id) => sliceIds.has(id))) {
+      return {
+        error: "The list changed elsewhere — reload and try again.",
+      };
+    }
+    await db.transaction(async (tx) => {
+      for (const [index, id] of ids.entries()) {
+        await tx
+          .update(announcements)
+          .set({ sortOrder: offset + index })
+          .where(eq(announcements.id, id));
+      }
+    });
+  } catch (error) {
+    console.error("[admin] reorder announcements failed:", error);
+    return { error: "Saving the order failed. Please try again." };
+  }
+
+  revalidatePath("/", "layout");
+  return {};
 }

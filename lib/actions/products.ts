@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { eq } from "drizzle-orm";
+import { asc, eq } from "drizzle-orm";
 import { z } from "zod";
 import {
   isDuplicateKeyError,
@@ -390,19 +390,28 @@ export async function deleteProductAction(id: string): Promise<void> {
 }
 
 /**
- * Persist a drag-and-drop reorder of the *complete* product list: `ids` is
- * every product id in its new display order, and `sortOrder` is rewritten to
- * the array index. Partial lists are rejected (never from a filtered view),
- * so a subset can never scramble the global storefront order.
+ * Persist a drag-and-drop reorder of the visible *slice* of the product
+ * list: `ids` is that page's product ids in their new display order and
+ * `offset` is where the page starts in the global sort. Only the slice is
+ * renumbered (offset + index), so rows outside the page keep their slots.
+ *
+ * The slice's *membership* must match the server's current global order —
+ * order is exactly what this call changes, but if a product was
+ * created/deleted elsewhere since the page rendered the sets can't line up,
+ * and we reject with the "product list changed" error the UI rolls back on
+ * (never from a filtered view: reordering stays off for ?q=).
  */
 export async function reorderProductsAction(
   ids: string[],
+  offset: number,
 ): Promise<ActionState> {
   await requireAdmin();
   if (
     !Array.isArray(ids) ||
     ids.length === 0 ||
-    ids.length > 1000 ||
+    ids.length > 100 ||
+    !Number.isInteger(offset) ||
+    offset < 0 ||
     new Set(ids).size !== ids.length ||
     ids.some((id) => typeof id !== "string" || !parseUuid(id))
   ) {
@@ -411,9 +420,17 @@ export async function reorderProductsAction(
 
   const db = await getDb();
   try {
-    const existing = await db.select({ id: products.id }).from(products);
-    const known = new Set(existing.map((row) => row.id));
-    if (existing.length !== ids.length || !ids.every((id) => known.has(id))) {
+    const existing = await db
+      .select({ id: products.id })
+      .from(products)
+      .orderBy(asc(products.sortOrder), asc(products.name));
+    const current = existing.map((row) => row.id);
+    const slice = current.slice(offset, offset + ids.length);
+    const sliceIds = new Set(slice);
+    if (
+      slice.length !== ids.length ||
+      !ids.every((id) => sliceIds.has(id))
+    ) {
       return {
         error: "The product list changed elsewhere — reload and try again.",
       };
@@ -422,7 +439,7 @@ export async function reorderProductsAction(
       for (const [index, id] of ids.entries()) {
         await tx
           .update(products)
-          .set({ sortOrder: index })
+          .set({ sortOrder: offset + index })
           .where(eq(products.id, id));
       }
     });

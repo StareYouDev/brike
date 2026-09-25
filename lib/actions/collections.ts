@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { eq } from "drizzle-orm";
+import { asc, eq } from "drizzle-orm";
 import { z } from "zod";
 import {
   isDuplicateKeyError,
@@ -199,4 +199,61 @@ export async function deleteCollectionAction(id: string): Promise<void> {
   await db.delete(collections).where(eq(collections.id, id));
   if (existing.image) await removeImage(existing.image);
   revalidatePath("/", "layout");
+}
+
+/**
+ * Persist a drag-and-drop reorder of the visible *slice* of the collections
+ * list (mirrors reorderProductsAction): `ids` is the page's ids in order,
+ * `offset` where the page starts globally. The slice's *membership* must
+ * match the server's current order — order is exactly what this call
+ * changes, but a collection added/removed elsewhere since the render makes
+ * the sets differ, so we reject with the "list changed" error the UI rolls
+ * back on instead of scrambling the mega menu.
+ */
+export async function reorderCollectionsAction(
+  ids: string[],
+  offset: number,
+): Promise<ActionState> {
+  await requireAdmin();
+  if (
+    !Array.isArray(ids) ||
+    ids.length === 0 ||
+    ids.length > 100 ||
+    !Number.isInteger(offset) ||
+    offset < 0 ||
+    new Set(ids).size !== ids.length ||
+    ids.some((id) => typeof id !== "string" || !parseUuid(id))
+  ) {
+    return { error: "That collection order isn't valid." };
+  }
+
+  const db = await getDb();
+  try {
+    const existing = await db
+      .select({ id: collections.id })
+      .from(collections)
+      .orderBy(asc(collections.sortOrder), asc(collections.title));
+    const current = existing.map((row) => row.id);
+    const slice = current.slice(offset, offset + ids.length);
+    const sliceIds = new Set(slice);
+    if (slice.length !== ids.length || !ids.every((id) => sliceIds.has(id))) {
+      return {
+        error: "The collection list changed elsewhere — reload and try again.",
+      };
+    }
+    await db.transaction(async (tx) => {
+      for (const [index, id] of ids.entries()) {
+        await tx
+          .update(collections)
+          .set({ sortOrder: offset + index })
+          .where(eq(collections.id, id));
+      }
+    });
+  } catch (error) {
+    console.error("[admin] reorder collections failed:", error);
+    return { error: "Saving the order failed. Please try again." };
+  }
+
+  revalidatePath("/", "layout");
+  return {};
 }

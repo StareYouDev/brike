@@ -45,16 +45,20 @@ const orderKey = (rows: ProductTableRow[]) =>
  *
  * Drops (or ↑/↓ on a row's grip button) reorder optimistically and persist
  * through `reorderProductsAction` — no separate "save" step. The server
- * rejects partial lists, so reordering is disabled while a search filters
- * the rows; a failed save rolls the table back to server truth.
+ * validates the visible slice against the global order, so reordering is
+ * disabled while a search filters the rows; a failed save rolls the table
+ * back to server truth.
  */
 export function ProductsTable({
   items,
   reorderable,
+  offset,
 }: {
   items: ProductTableRow[];
   /** Reordering needs the full list — off while `?q=` filters the rows. */
   reorderable: boolean;
+  /** Where this page's rows start in the global sort (pagination slice). */
+  offset: number;
 }) {
   // Optimistic order: the ids the admin last arranged. Derived against the
   // server's `items` on every render, so revalidations (deletes, refreshes)
@@ -91,7 +95,7 @@ export function ProductsTable({
     startTransition(async () => {
       let error: string | undefined;
       try {
-        error = (await reorderProductsAction(ids)).error;
+        error = (await reorderProductsAction(ids, offset)).error;
       } catch {
         error = "Saving the order failed. Please try again.";
       }

@@ -159,6 +159,9 @@ test("collections: create and delete round-trip", async ({ page }) => {
   await page.getByRole("button", { name: "Create collection" }).click();
 
   await expect(page).toHaveURL(/\/admin\/collections$/);
+  // The list is paginated and this row sorts last (Sort order 9999) —
+  // ?page=99 is clamped to the final page, where it lands.
+  await page.goto("/admin/collections?page=99");
   await expect(page.getByRole("link", { name: "E2E Collection" })).toBeVisible();
 
   const row = page.locator("tbody tr").filter({ hasText: slug });
@@ -170,7 +173,10 @@ test("collections: create and delete round-trip", async ({ page }) => {
 test("announcements: add and delete", async ({ page }) => {
   await login(page);
 
-  await page.goto("/admin/announcements");
+  // New rows sort last (sortOrder = max + 1), and the list is paginated —
+  // ?page=99 is clamped to the final page, which always contains the newest
+  // row, so drive the whole test from there.
+  await page.goto("/admin/announcements?page=99");
   await expect(
     page.getByRole("heading", { level: 1, name: "Announcements" }),
   ).toBeVisible();
@@ -180,15 +186,14 @@ test("announcements: add and delete", async ({ page }) => {
   const rows = page.locator("form").filter({
     has: page.locator('input[name="text"]'),
   });
-  const before = await rows.count();
 
   const stamp = Date.now().toString(36);
   const text = `E2E announcement ${stamp}`;
   await page.getByLabel("New announcement").fill(text);
   await page.getByRole("button", { name: "Add announcement" }).click();
 
-  await expect(rows).toHaveCount(before + 1);
-  // The new row sorts last (sortOrder = max + 1, ordered ascending).
+  // The re-render re-clamps ?page=99: our row is globally last, so it is
+  // the last row of whatever page that resolves to (boundary-safe).
   const newest = rows.last();
   await expect(newest.locator('input[name="text"]')).toHaveValue(text);
 
@@ -197,7 +202,10 @@ test("announcements: add and delete", async ({ page }) => {
   const newestRow = page.getByTestId("announcement-row").last();
   await newestRow.getByRole("button", { name: "Delete" }).click();
   await newestRow.getByRole("button", { name: "Yes, delete" }).click();
-  await expect(rows).toHaveCount(before, { timeout: 15_000 });
+  await expect(rows.last().locator('input[name="text"]')).not.toHaveValue(
+    text,
+    { timeout: 15_000 },
+  );
 });
 
 test("orders: list renders, status filters, unknown id is 404", async ({
@@ -371,9 +379,28 @@ test("products: drag & keyboard reorder persists the new order", async ({
   const rows = page.locator("tbody tr");
   const count = await rows.count();
   expect(count).toBeGreaterThanOrEqual(3);
-  // Bottom two rows: stable seed products (throwaway test rows sort on top).
-  const upper = (await rows.nth(count - 2).locator("a").first().innerText()).trim();
-  const lower = (await rows.nth(count - 1).locator("a").first().innerText()).trim();
+  // Two ADJACENT non-throwaway rows: ArrowDown swaps a row with the one
+  // directly below it, so if a throwaway row from a parallel create test sits
+  // between the pair (they share sortOrder 0 and interleave by name), the
+  // swap lands on that row instead of on `lower`. Skipping E2E rows keeps
+  // both captures on this 10-row page whenever a temp row appears above.
+  let upper = "";
+  let lower = "";
+  for (let index = 0; index < count - 1; index++) {
+    const name = (
+      await rows.nth(index).locator("a").first().innerText()
+    ).trim();
+    if (name.startsWith("E2E")) continue;
+    const next = (
+      await rows.nth(index + 1).locator("a").first().innerText()
+    ).trim();
+    if (next.startsWith("E2E")) continue;
+    upper = name;
+    lower = next;
+    break;
+  }
+  expect(upper).not.toBe("");
+  expect(lower).not.toBe("");
   expect(await positionOf(upper)).toBeLessThan(await positionOf(lower));
 
   // Keyboard path: move the second-to-last product down one slot.

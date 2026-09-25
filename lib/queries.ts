@@ -141,7 +141,7 @@ export async function getAnnouncements(): Promise<string[]> {
   const rows = await db
     .select()
     .from(announcementsTable)
-    .orderBy(asc(announcementsTable.sortOrder));
+    .orderBy(asc(announcementsTable.sortOrder), asc(announcementsTable.id));
   return rows.map((r) => r.text);
 }
 
@@ -426,7 +426,7 @@ export async function getAdminAnnouncements(): Promise<AdminAnnouncement[]> {
   const rows = await db
     .select()
     .from(announcementsTable)
-    .orderBy(asc(announcementsTable.sortOrder));
+    .orderBy(asc(announcementsTable.sortOrder), asc(announcementsTable.id));
   return rows.map((r) => ({ id: r.id, text: r.text, sortOrder: r.sortOrder }));
 }
 

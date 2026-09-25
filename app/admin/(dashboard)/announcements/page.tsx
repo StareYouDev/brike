@@ -5,6 +5,7 @@ import {
   updateAnnouncementAction,
 } from "@/lib/actions/announcements";
 import { AnnouncementsManager } from "@/components/admin/announcements-manager";
+import { ListPagination, parsePage } from "@/components/admin/list-pagination";
 import { getAdminAnnouncements } from "@/lib/queries";
 
 export const metadata: Metadata = {
@@ -12,8 +13,19 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-export default async function AdminAnnouncementsPage() {
-  const items = await getAdminAnnouncements();
+/** Rows per page of the announcements list. */
+const PAGE_SIZE = 3;
+
+export default async function AdminAnnouncementsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
+  const { page: rawPage } = await searchParams;
+  const all = await getAdminAnnouncements();
+  const totalPages = Math.ceil(all.length / PAGE_SIZE);
+  const page = parsePage(typeof rawPage === "string" ? rawPage : undefined, totalPages);
+  const items = all.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   return (
     <div className="space-y-6">
@@ -27,9 +39,16 @@ export default async function AdminAnnouncementsPage() {
 
       <AnnouncementsManager
         items={items}
+        offset={(page - 1) * PAGE_SIZE}
         createAction={createAnnouncementAction}
         updateAction={updateAnnouncementAction}
         deleteAction={deleteAnnouncementAction}
+      />
+
+      <ListPagination
+        page={page}
+        totalPages={totalPages}
+        basePath="/admin/announcements"
       />
     </div>
   );

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Package } from "lucide-react";
+import { ListPagination, parsePage } from "@/components/admin/list-pagination";
 import { ProductsTable } from "@/components/admin/products-table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,14 +12,22 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
+/** Rows per page of the unfiltered list (?q= results are never paged). */
+const PAGE_SIZE = 10;
+
 export default async function AdminProductsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string }>;
+  searchParams: Promise<{ q?: string; page?: string }>;
 }) {
-  const { q: raw } = await searchParams;
+  const { q: raw, page: rawPage } = await searchParams;
   const q = typeof raw === "string" ? raw.trim() : "";
-  const items = await getAdminProducts(q || undefined);
+  const all = await getAdminProducts(q || undefined);
+  const totalPages = Math.ceil(all.length / PAGE_SIZE);
+  const page = q
+    ? 1
+    : parsePage(typeof rawPage === "string" ? rawPage : undefined, totalPages);
+  const items = q ? all : all.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   return (
     <div className="space-y-6">
@@ -27,8 +36,8 @@ export default async function AdminProductsPage({
           <h1 className="text-2xl font-semibold tracking-tight">Products</h1>
           <p className="mt-1.5 text-sm text-muted-foreground">
             {q
-              ? `${items.length} match${items.length === 1 ? "" : "es"} for “${q}”`
-              : `${items.length} product${items.length === 1 ? "" : "s"}`}
+              ? `${all.length} match${all.length === 1 ? "" : "es"} for “${q}”`
+              : `${all.length} product${all.length === 1 ? "" : "s"}`}
           </p>
         </div>
         <Button asChild>
@@ -76,7 +85,19 @@ export default async function AdminProductsPage({
           )}
         </div>
       ) : (
-        <ProductsTable items={items} reorderable={!q} />
+        <ProductsTable
+          items={items}
+          reorderable={!q}
+          offset={q ? 0 : (page - 1) * PAGE_SIZE}
+        />
+      )}
+
+      {q ? null : (
+        <ListPagination
+          page={page}
+          totalPages={totalPages}
+          basePath="/admin/products"
+        />
       )}
     </div>
   );

@@ -1,19 +1,9 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
 import { Layers } from "lucide-react";
-import { deleteCollectionAction } from "@/lib/actions/collections";
-import { DeleteButton } from "@/components/admin/delete-button";
+import { CollectionsTable } from "@/components/admin/collections-table";
+import { ListPagination, parsePage } from "@/components/admin/list-pagination";
 import { Button } from "@/components/ui/button";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { collectionImage } from "@/lib/images";
 import { getAdminCollections } from "@/lib/queries";
 
 export const metadata: Metadata = {
@@ -21,8 +11,19 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-export default async function AdminCollectionsPage() {
-  const items = await getAdminCollections();
+/** Rows per page of the collections list. */
+const PAGE_SIZE = 5;
+
+export default async function AdminCollectionsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
+  const { page: rawPage } = await searchParams;
+  const all = await getAdminCollections();
+  const totalPages = Math.ceil(all.length / PAGE_SIZE);
+  const page = parsePage(typeof rawPage === "string" ? rawPage : undefined, totalPages);
+  const items = all.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   return (
     <div className="space-y-6">
@@ -30,7 +31,7 @@ export default async function AdminCollectionsPage() {
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Collections</h1>
           <p className="mt-1.5 text-sm text-muted-foreground">
-            {items.length} collection{items.length === 1 ? "" : "s"} · powers
+            {all.length} collection{all.length === 1 ? "" : "s"} · powers
             the mega menu
           </p>
         </div>
@@ -56,78 +57,14 @@ export default async function AdminCollectionsPage() {
           </Button>
         </div>
       ) : (
-        <div className="overflow-hidden rounded-xl bg-card ring-1 ring-foreground/10">
-          <Table className="min-w-[680px]">
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-16">Banner</TableHead>
-                <TableHead>Collection</TableHead>
-                <TableHead>Short label</TableHead>
-                <TableHead className="text-right">Products</TableHead>
-                <TableHead className="w-16 text-right">Sort</TableHead>
-                <TableHead className="w-44 text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {items.map((collection) => (
-                <TableRow key={collection.id}>
-                  <TableCell>
-                    <div className="relative size-10 overflow-hidden rounded border border-border bg-meta">
-                      <Image
-                        src={collectionImage({
-                          slug: collection.slug,
-                          image: collection.image ?? undefined,
-                        })}
-                        alt=""
-                        fill
-                        unoptimized
-                        sizes="40px"
-                        className="object-cover"
-                      />
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Link
-                      href={`/admin/collections/${collection.id}`}
-                      className="font-medium transition-colors underline-offset-2 hover:underline decoration-peach-deep"
-                    >
-                      {collection.title}
-                    </Link>
-                    <p className="text-[12px] text-muted-foreground">
-                      /collections/{collection.slug}
-                    </p>
-                  </TableCell>
-                  <TableCell className="text-[13.5px]">
-                    {collection.shortTitle}
-                  </TableCell>
-                  <TableCell className="text-right tabular-nums">
-                    {collection.productCount}
-                  </TableCell>
-                  <TableCell className="text-right tabular-nums">
-                    {collection.sortOrder}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center justify-end gap-1">
-                      <Button asChild variant="outline" size="sm">
-                        <Link href={`/admin/collections/${collection.id}`}>
-                          Edit
-                        </Link>
-                      </Button>
-                      <DeleteButton
-                        action={deleteCollectionAction.bind(
-                          null,
-                          collection.id,
-                        )}
-                        subject={`“${collection.title}”`}
-                      />
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
+        <CollectionsTable items={items} offset={(page - 1) * PAGE_SIZE} />
       )}
+
+      <ListPagination
+        page={page}
+        totalPages={totalPages}
+        basePath="/admin/collections"
+      />
     </div>
   );
 }

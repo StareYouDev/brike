@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ClipboardList } from "lucide-react";
 import { StatusBadge } from "@/components/admin/status-badge";
+import { ListPagination, parsePage } from "@/components/admin/list-pagination";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -38,22 +39,31 @@ const FILTERS: Array<{ value: string; label: string }> = [
   ...ORDER_STATUSES.map((s) => ({ value: s, label: STATUS_LABELS[s] })),
 ];
 
+/** Rows per page of the orders list. */
+const PAGE_SIZE = 5;
+
 export default async function AdminOrdersPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string }>;
+  searchParams: Promise<{ status?: string; page?: string }>;
 }) {
-  const { status: raw } = await searchParams;
+  const { status: raw, page: rawPage } = await searchParams;
   const status =
     typeof raw === "string" && isOrderStatus(raw) ? raw : undefined;
-  const items = await getAdminOrders(status);
+  const all = await getAdminOrders(status);
+  const totalPages = Math.ceil(all.length / PAGE_SIZE);
+  const page = parsePage(
+    typeof rawPage === "string" ? rawPage : undefined,
+    totalPages,
+  );
+  const items = all.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   return (
     <div className="space-y-6">
       <header>
         <h1 className="text-2xl font-semibold tracking-tight">Orders</h1>
         <p className="mt-1.5 text-sm text-muted-foreground">
-          {items.length} order{items.length === 1 ? "" : "s"}
+          {all.length} order{all.length === 1 ? "" : "s"}
           {status ? ` · ${STATUS_LABELS[status]}` : ""} · cash on delivery
         </p>
       </header>
@@ -153,6 +163,13 @@ export default async function AdminOrdersPage({
           </Table>
         </div>
       )}
+
+      <ListPagination
+        page={page}
+        totalPages={totalPages}
+        basePath="/admin/orders"
+        searchParams={status ? { status } : {}}
+      />
     </div>
   );
 }
