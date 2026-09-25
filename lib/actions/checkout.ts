@@ -19,8 +19,13 @@ import {
   products,
   productStock,
 } from "@/lib/db/schema";
+import {
+  claimDiscount,
+  discountPenceFor,
+  resolveDiscount,
+} from "@/lib/discount";
 import { productImages } from "@/lib/images";
-import { orderQuotaError } from "@/lib/rate-limit";
+import { DISCOUNT_QUOTA, orderQuotaError, overQuota } from "@/lib/rate-limit";
 import { clientIp } from "@/lib/request-ip";
 
 /**
@@ -52,6 +57,13 @@ const basketLine = z.object({
  */
 class InsufficientStockError extends Error {}
 
+/**
+ * Raised inside the checkout transaction when the guarded redemption loses
+ * a race (code deactivated, cap reached, or this email already redeemed it).
+ * Module-local for the same "use server" export reason as above.
+ */
+class DiscountError extends Error {}
+
 /** User-facing stock rejection: sold out vs. not enough for the quantity. */
 function stockError(name: string, size: string, available: number): string {
   return available === 0
@@ -78,6 +90,56 @@ const contact = z.object({
     ),
   notes: z.string().trim().max(500),
 });
+
+export interface DiscountPreviewState {
+  ok?: boolean;
+  error?: string;
+  code?: string;
+  percentOff?: number;
+}
+
+/**
+ * Validates a promo code for the checkout sidebar WITHOUT consuming it —
+ * returns the code + percentage so the client can live-render the saving
+ * against the current basket. placeOrderAction re-validates authoritatively;
+ * this path exists only for the preview, so it's quota-limited to stop it
+ * being a bulk code oracle.
+ */
+export async function previewDiscountAction(
+  _prev: DiscountPreviewState,
+  formData: FormData,
+): Promise<DiscountPreviewState> {
+  const rawCode = String(formData.get("discount") ?? "").trim();
+  const email = String(formData.get("email") ?? "").trim().toLowerCase();
+  if (!rawCode) return { error: "Enter a discount code." };
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) {
+    return { error: "Enter your email address first — codes are tied to it." };
+  }
+
+  try {
+    // Loopback/dev has no trusted IP (clientIp → null); on Vercel the edge
+    // always supplies one, so the quota applies to every real request.
+    const ip = await clientIp();
+    if (
+      ip &&
+      (await overQuota(
+        `discount:ip:${ip}`,
+        DISCOUNT_QUOTA.ip.limit,
+        DISCOUNT_QUOTA.ip.windowSec,
+      ))
+    ) {
+      return { error: "Too many code checks — wait a moment and try again." };
+    }
+  } catch (error) {
+    // Fail open: a throttle fault must never block a legitimate preview.
+    console.error("[rate-limit] discount preview quota failed:", error);
+  }
+
+  const db = await getDb();
+  const resolved = await resolveDiscount(db, rawCode, email);
+  if (!resolved.ok) return { error: resolved.error };
+  return { ok: true, code: resolved.code, percentOff: resolved.percentOff };
+}
 
 export async function placeOrderAction(
   _prev: ActionState,
@@ -173,6 +235,20 @@ export async function placeOrderAction(
     }
   }
 
+  // Promo code (optional): validated against the live table BEFORE anything
+  // is written, so a bad/used code fails with a field-level message and
+  // never reaches the transaction. The tx re-claims it atomically below.
+  const rawDiscount = String(formData.get("discount") ?? "").trim();
+  let discount: { codeId: string; code: string; percentOff: number } | null =
+    null;
+  if (rawDiscount) {
+    const resolved = await resolveDiscount(db, rawDiscount, fields.data.email);
+    if (!resolved.ok) {
+      return { fieldErrors: { discount: [resolved.error] } };
+    }
+    discount = resolved;
+  }
+
   // Snapshot lines for order_items — the variant image is whichever art the
   // selected colourway shows (mirrors AddToCart on the product page).
   const items = basket.map((line) => {
@@ -201,8 +277,12 @@ export async function placeOrderAction(
     (sum, item) => sum + item.unitPricePence * item.qty,
     0,
   );
-  const deliveryPence = deliveryPenceFor(subtotalPence);
-  const totalPence = subtotalPence + deliveryPence;
+  const discountPence = discount
+    ? discountPenceFor(subtotalPence, discount.percentOff)
+    : 0;
+  // The free-delivery threshold applies to what the customer actually pays.
+  const deliveryPence = deliveryPenceFor(subtotalPence - discountPence);
+  const totalPence = subtotalPence - discountPence + deliveryPence;
 
   const order = {
     status: "pending",
@@ -219,6 +299,8 @@ export async function placeOrderAction(
     subtotalPence,
     deliveryPence,
     totalPence,
+    discountCode: discount?.code ?? null,
+    discountPence: discount ? discountPence : null,
   };
 
   let orderCode = "";
@@ -257,6 +339,25 @@ export async function placeOrderAction(
           .values({ code: orderCode, ...order })
           .returning({ id: orders.id });
         orderId = row.id;
+
+        // Claim the promo inside the same transaction: the guarded counter
+        // bump re-checks active/expiry/cap, and the unique (code_id, email)
+        // insert closes the double-redeem race — losing either aborts the
+        // whole order (DiscountError below) instead of double-counting.
+        if (discount) {
+          const claimed = await claimDiscount(
+            tx,
+            discount.codeId,
+            fields.data.email,
+            row.id,
+          );
+          if (!claimed) {
+            throw new DiscountError(
+              "That code has just been used or is no longer available — remove it and try again.",
+            );
+          }
+        }
+
         await tx
           .insert(orderItems)
           .values(items.map((item) => ({ ...item, orderId: row.id })));
@@ -267,6 +368,9 @@ export async function placeOrderAction(
       // already rolled back, so just tell the customer what happened.
       if (error instanceof InsufficientStockError) {
         return { error: error.message };
+      }
+      if (error instanceof DiscountError) {
+        return { fieldErrors: { discount: [error.message] } };
       }
       // A code collision is astronomically unlikely but retried with a fresh
       // code; anything else surfaces to the customer as a retryable error.

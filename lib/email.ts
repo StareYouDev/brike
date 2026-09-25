@@ -26,6 +26,8 @@ export interface MailOrder {
   subtotalPence: number;
   deliveryPence: number;
   totalPence: number;
+  discountCode?: string | null;
+  discountPence?: number | null;
 }
 
 export interface MailItem {
@@ -119,8 +121,13 @@ function totalsTable(order: MailOrder): string {
         <td style="padding:6px 0;font-size:${strong ? "16px" : "14px"};${strong ? "font-weight:bold;" : ""}">${label}</td>
         <td align="right" style="padding:6px 0;font-size:${strong ? "16px" : "14px"};${strong ? "font-weight:bold;" : ""}">${value}</td>
       </tr>`;
+  const discountRow =
+    order.discountCode && order.discountPence
+      ? row(`Discount · ${esc(order.discountCode)}`, `−${money(order.discountPence)}`)
+      : "";
   return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:10px;">
       ${row("Subtotal", money(order.subtotalPence))}
+      ${discountRow}
       ${row("Delivery", deliveryLabel(order.deliveryPence))}
       ${row("Total (cash on delivery)", money(order.totalPence), true)}
     </table>`;
@@ -170,6 +177,9 @@ export function orderConfirmationEmail(
     itemsText(items),
     "",
     `Subtotal: ${money(order.subtotalPence)}`,
+    order.discountCode && order.discountPence
+      ? `Discount (${order.discountCode}): −${money(order.discountPence)}`
+      : null,
     `Delivery: ${deliveryLabel(order.deliveryPence)}`,
     `Total (cash on delivery): ${money(order.totalPence)}`,
     "",
@@ -212,6 +222,9 @@ export function newOrderAlertEmail(
     itemsText(items),
     "",
     `Subtotal: ${money(order.subtotalPence)}`,
+    order.discountCode && order.discountPence
+      ? `Discount (${order.discountCode}): −${money(order.discountPence)}`
+      : null,
     `Delivery: ${deliveryLabel(order.deliveryPence)}`,
     `Total: ${money(order.totalPence)}`,
     "",
@@ -248,6 +261,28 @@ export function orderShippedEmail(order: {
     `Anything not right? Reply and quote ${order.code}.`,
   ].join("\n");
   return { to: order.email, subject, html, text };
+}
+
+/** Newsletter welcome — hands over the 10% code durably (best-effort). */
+export function welcomeCodeEmail(to: string, code: string): Mail {
+  const subject = `Your 10% code: ${code}`;
+  const html = shell(
+    subject,
+    `${h1(`You're in — here's 10% off`)}
+    ${p(`Thanks for joining the BRIKE list. Use code <strong>${esc(code)}</strong> at checkout for 10% off your first order.`)}
+    ${p(`One use per email address. Your subtotal shows the saving before you confirm — cash on delivery as usual, nothing is charged online.`)}
+    ${p(`Don't want these emails? Reply "unsubscribe" and we'll remove you straight away.`)}`,
+  );
+  const text = [
+    `Thanks for joining the BRIKE list.`,
+    "",
+    `Your code: ${code} — 10% off your first order.`,
+    "One use per email address. The subtotal shows the saving before you",
+    "confirm — cash on delivery as usual, nothing is charged online.",
+    "",
+    `Don't want these emails? Reply "unsubscribe" and we'll remove you.`,
+  ].join("\n");
+  return { to, subject, html, text };
 }
 
 /**

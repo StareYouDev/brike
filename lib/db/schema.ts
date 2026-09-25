@@ -16,6 +16,7 @@ import {
   real,
   text,
   timestamp,
+  unique,
   uuid,
 } from "drizzle-orm/pg-core";
 import type { Colorway } from "@/data/catalog";
@@ -135,6 +136,10 @@ export const orders = pgTable(
     subtotalPence: integer("subtotal_pence").notNull(),
     deliveryPence: integer("delivery_pence").notNull(),
     totalPence: integer("total_pence").notNull(),
+    /** Promo code applied at checkout (e.g. WELCOME10); null when none. */
+    discountCode: text("discount_code"),
+    /** Gross discount taken (pence); null when no code was used. */
+    discountPence: integer("discount_pence"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -227,6 +232,57 @@ export const settings = pgTable("settings", {
     .defaultNow(),
 });
 
+/** Newsletter sign-ups from the footer form (email is the identity). */
+export const subscribers = pgTable("subscribers", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  email: text("email").notNull().unique(),
+  source: text("source").notNull().default("footer"),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
+/** Percentage promo codes (WELCOME10 is seeded; more can be added later). */
+export const discountCodes = pgTable("discount_codes", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  /** Stored uppercase — lookups normalise input to match. */
+  code: text("code").notNull().unique(),
+  percentOff: integer("percent_off").notNull(),
+  active: boolean("active").notNull().default(true),
+  /** null = no overall redemption cap. */
+  maxRedemptions: integer("max_redemptions"),
+  redemptionsCount: integer("redemptions_count").notNull().default(0),
+  expiresAt: timestamp("expires_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
+/**
+ * One row per (code, email) — the "one redemption per email" rule, enforced
+ * by the composite unique so two simultaneous checkouts can't both take it.
+ */
+export const discountRedemptions = pgTable(
+  "discount_redemptions",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    codeId: uuid("code_id")
+      .notNull()
+      .references(() => discountCodes.id, { onDelete: "cascade" }),
+    email: text("email").notNull(),
+    orderId: uuid("order_id").references(() => orders.id, {
+      onDelete: "set null",
+    }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    unique("discount_redemptions_code_email_uq").on(t.codeId, t.email),
+    index("discount_redemptions_email_idx").on(t.email),
+  ],
+);
+
 /** Every drizzle query in the app runs against this shape (both drivers). */
 export type AppDB = PgliteDatabase<typeof schema>;
 
@@ -243,4 +299,7 @@ export const schema = {
   rateLimits,
   reviews,
   settings,
+  subscribers,
+  discountCodes,
+  discountRedemptions,
 };

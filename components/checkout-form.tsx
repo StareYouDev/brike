@@ -1,11 +1,19 @@
 "use client";
 
-import { useActionState, useSyncExternalStore } from "react";
+import {
+  useActionState,
+  useSyncExternalStore,
+  useState,
+  useTransition,
+} from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { Banknote, ShoppingBag } from "lucide-react";
 import { formatPrice } from "@/data/catalog";
-import { placeOrderAction } from "@/lib/actions/checkout";
+import {
+  placeOrderAction,
+  previewDiscountAction,
+} from "@/lib/actions/checkout";
 import { deliveryPenceFor } from "@/lib/checkout";
 import {
   DEFAULT_CHECKOUT_COPY,
@@ -43,6 +51,16 @@ export function CheckoutForm({
   const items = useCart((s) => s.items);
   const openCart = useCart((s) => s.open);
   const [state, formAction, pending] = useActionState(placeOrderAction, {});
+  // Promo code: typed into the visible input (submitted with the form and
+  // re-validated server-side); "Apply" only previews the saving — it never
+  // consumes the code.
+  const [discountInput, setDiscountInput] = useState("");
+  const [preview, setPreview] = useState<{
+    code: string;
+    percentOff: number;
+  } | null>(null);
+  const [previewError, setPreviewError] = useState<string | null>(null);
+  const [previewPending, startPreview] = useTransition();
 
   const mounted = useSyncExternalStore(
     subscribeNothing,
@@ -84,11 +102,54 @@ export function CheckoutForm({
 
   const subtotal = cartSubtotal(items); // pounds
   const subtotalPence = Math.round(subtotal * 100);
-  const deliveryPence = deliveryPenceFor(subtotalPence);
-  const totalPence = subtotalPence + deliveryPence;
+  // The preview returns a percentage so the saving stays correct as the
+  // basket changes; the server recomputes the same formula authoritatively.
+  const discountPence = preview
+    ? Math.floor((subtotalPence * preview.percentOff) / 100)
+    : 0;
+  // Free-delivery threshold applies to the discounted subtotal — mirrors
+  // placeOrderAction exactly.
+  const deliveryPence = deliveryPenceFor(subtotalPence - discountPence);
+  const totalPence = subtotalPence - discountPence + deliveryPence;
   const basket = JSON.stringify(
     items.map(({ slug, size, colorway, qty }) => ({ slug, size, colorway, qty })),
   );
+
+  const applyCode = () => {
+    const code = discountInput.trim();
+    const emailEl = document.getElementById(
+      "co-email",
+    ) as HTMLInputElement | null;
+    const email = emailEl?.value.trim() ?? "";
+    if (!code) {
+      setPreview(null);
+      setPreviewError("Enter a discount code.");
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) {
+      setPreviewError("Enter your email address first — codes are tied to it.");
+      return;
+    }
+    setPreviewError(null);
+    startPreview(async () => {
+      const fd = new FormData();
+      fd.set("discount", code);
+      fd.set("email", email);
+      const res = await previewDiscountAction({}, fd);
+      if (res.ok && res.code && typeof res.percentOff === "number") {
+        setPreview({ code: res.code, percentOff: res.percentOff });
+      } else {
+        setPreview(null);
+        setPreviewError(res.error ?? "That discount code isn't valid.");
+      }
+    });
+  };
+
+  const removeCode = () => {
+    setDiscountInput("");
+    setPreview(null);
+    setPreviewError(null);
+  };
 
   return (
     <form
@@ -296,11 +357,71 @@ export function CheckoutForm({
           ))}
         </ul>
 
+        <div className="mt-5 border-t border-border pt-4">
+          <label htmlFor="co-discount" className="block text-[13px] font-medium">
+            Discount code
+          </label>
+          <div className="mt-1.5 flex gap-2">
+            <input
+              id="co-discount"
+              name="discount"
+              value={discountInput}
+              onChange={(e) => {
+                const value = e.target.value;
+                setDiscountInput(value);
+                setPreviewError(null);
+                if (preview && value.trim().toUpperCase() !== preview.code) {
+                  setPreview(null);
+                }
+              }}
+              placeholder="e.g. WELCOME10"
+              autoComplete="off"
+              spellCheck={false}
+              className="min-w-0 flex-1 border border-input bg-white px-3 py-2.5 text-[14px] outline-none transition-colors focus:border-ink"
+            />
+            <button
+              type="button"
+              onClick={applyCode}
+              disabled={previewPending}
+              className="shrink-0 border border-ink px-3.5 text-[12px] font-semibold tracking-[0.12em] uppercase transition-colors hover:bg-ink hover:text-cream disabled:opacity-60"
+            >
+              {previewPending ? "…" : preview ? "Update" : "Apply"}
+            </button>
+          </div>
+          {preview ? (
+            <div className="mt-2 flex items-center justify-between gap-2 border border-forest/40 bg-forest/5 px-3 py-2 text-[13px]">
+              <span>
+                <strong>{preview.code}</strong> applied
+              </span>
+              <button
+                type="button"
+                onClick={removeCode}
+                aria-label="Remove discount code"
+                className="text-[12.5px] text-muted-foreground underline underline-offset-2"
+              >
+                Remove
+              </button>
+            </div>
+          ) : null}
+          {previewError ? (
+            <p role="alert" className="mt-1.5 text-[13px] text-sale">
+              {previewError}
+            </p>
+          ) : null}
+          <FieldError messages={state.fieldErrors?.discount} />
+        </div>
+
         <dl className="space-y-2 border-t border-border pt-4 text-[15px]">
           <div className="flex justify-between">
             <dt>Subtotal</dt>
             <dd>{formatPrice(subtotal)}</dd>
           </div>
+          {preview && discountPence > 0 ? (
+            <div className="flex justify-between text-forest">
+              <dt>Discount · {preview.code}</dt>
+              <dd>−{formatPrice(discountPence / 100)}</dd>
+            </div>
+          ) : null}
           <div className="flex justify-between">
             <dt>Delivery</dt>
             <dd>

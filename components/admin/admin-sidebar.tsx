@@ -9,6 +9,7 @@ import {
   Layers,
   LayoutDashboard,
   LogOut,
+  Mail,
   Megaphone,
   Package,
 } from "lucide-react";
@@ -38,6 +39,7 @@ const NAV_ITEMS: Array<{
   { href: "/admin/collections", label: "Collections", icon: Layers },
   { href: "/admin/announcements", label: "Announcements", icon: Megaphone },
   { href: "/admin/orders", label: "Orders", icon: ClipboardList },
+  { href: "/admin/newsletter", label: "Newsletter", icon: Mail },
   { href: "/admin/forms", label: "Forms", icon: FileText },
 ];
 

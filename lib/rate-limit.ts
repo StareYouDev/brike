@@ -33,6 +33,16 @@ export const REVIEW_QUOTA = {
   ip: { limit: 6, windowSec: 3600 },
 } as const;
 
+/** Newsletter sign-ups one connection may post per window. */
+export const NEWSLETTER_QUOTA = {
+  ip: { limit: 5, windowSec: 3600 },
+} as const;
+
+/** Checkout promo-code preview checks (stops bulk code guessing). */
+export const DISCOUNT_QUOTA = {
+  ip: { limit: 20, windowSec: 300 },
+} as const;
+
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 /**

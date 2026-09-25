@@ -41,8 +41,15 @@ export default async function OrderConfirmationPage({
           Thank you — your order is in
         </h1>
         <p className="mt-3 text-[15.5px] text-foreground/80">
-          A confirmation is on its way to{" "}
-          <span className="font-medium">{order.email}</span>. Your reference:{" "}
+          {emailsEnabled() ? (
+            <>
+              A confirmation is on its way to{" "}
+              <span className="font-medium">{order.email}</span>. Your
+              reference:{" "}
+            </>
+          ) : (
+            <>Your reference: </>
+          )}
           <strong data-testid="order-code">{order.code}</strong>
         </p>
         <p className="mx-auto mt-4 flex flex-wrap items-center justify-center gap-1.5 text-[14.5px] text-ink/75">
@@ -91,6 +98,12 @@ export default async function OrderConfirmationPage({
             <dt>Subtotal</dt>
             <dd>{formatPrice(order.subtotalPence / 100)}</dd>
           </div>
+          {order.discountCode && order.discountPence ? (
+            <div className="flex justify-between text-forest">
+              <dt>Discount · {order.discountCode}</dt>
+              <dd>−{formatPrice(order.discountPence / 100)}</dd>
+            </div>
+          ) : null}
           <div className="flex justify-between">
             <dt>Delivery</dt>
             <dd>

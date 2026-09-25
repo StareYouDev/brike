@@ -82,6 +82,8 @@ export const DDL_STATEMENTS: string[] = [
     subtotal_pence integer NOT NULL,
     delivery_pence integer NOT NULL,
     total_pence integer NOT NULL,
+    discount_code text,
+    discount_pence integer,
     created_at timestamptz NOT NULL DEFAULT now(),
     updated_at timestamptz NOT NULL DEFAULT now()
   )`,
@@ -126,4 +128,33 @@ export const DDL_STATEMENTS: string[] = [
     value jsonb NOT NULL,
     updated_at timestamptz NOT NULL DEFAULT now()
   )`,
+  // Phase 3: discount columns on the existing orders table (the CREATE above
+  // covers fresh databases; these cover the already-deployed one).
+  `ALTER TABLE orders ADD COLUMN IF NOT EXISTS discount_code text`,
+  `ALTER TABLE orders ADD COLUMN IF NOT EXISTS discount_pence integer`,
+  `CREATE TABLE IF NOT EXISTS subscribers (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    email text NOT NULL UNIQUE,
+    source text NOT NULL DEFAULT 'footer',
+    created_at timestamptz NOT NULL DEFAULT now()
+  )`,
+  `CREATE TABLE IF NOT EXISTS discount_codes (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    code text NOT NULL UNIQUE,
+    percent_off integer NOT NULL CHECK (percent_off > 0 AND percent_off <= 100),
+    active boolean NOT NULL DEFAULT true,
+    max_redemptions integer,
+    redemptions_count integer NOT NULL DEFAULT 0,
+    expires_at timestamptz,
+    created_at timestamptz NOT NULL DEFAULT now()
+  )`,
+  `CREATE TABLE IF NOT EXISTS discount_redemptions (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    code_id uuid NOT NULL REFERENCES discount_codes(id) ON DELETE CASCADE,
+    email text NOT NULL,
+    order_id uuid REFERENCES orders(id) ON DELETE SET NULL,
+    created_at timestamptz NOT NULL DEFAULT now(),
+    CONSTRAINT discount_redemptions_code_email_uq UNIQUE (code_id, email)
+  )`,
+  `CREATE INDEX IF NOT EXISTS discount_redemptions_email_idx ON discount_redemptions (email)`,
 ];

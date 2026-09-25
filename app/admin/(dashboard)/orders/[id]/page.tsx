@@ -121,6 +121,14 @@ export default async function AdminOrderDetailPage({
                   {formatPrice(order.subtotalPence / 100)}
                 </dd>
               </div>
+              {order.discountCode && order.discountPence ? (
+                <div className="flex justify-between text-forest">
+                  <dt>Discount · {order.discountCode}</dt>
+                  <dd className="tabular-nums">
+                    −{formatPrice(order.discountPence / 100)}
+                  </dd>
+                </div>
+              ) : null}
               <div className="flex justify-between">
                 <dt className="text-muted-foreground">Delivery</dt>
                 <dd className="tabular-nums">

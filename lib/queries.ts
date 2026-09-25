@@ -11,12 +11,14 @@ import { getDb } from "@/lib/db";
 import {
   announcements as announcementsTable,
   collections as collectionsTable,
+  discountCodes as discountCodesTable,
   orderItems as orderItemsTable,
   orders as ordersTable,
   productCollections,
   products as productsTable,
   productStock as productStockTable,
   reviews as reviewsTable,
+  subscribers as subscribersTable,
 } from "@/lib/db/schema";
 import type { Collection, Colorway, Product } from "@/data/catalog";
 import { normalizeColorways } from "@/data/catalog";
@@ -460,6 +462,61 @@ export async function getAdminAnnouncements(): Promise<AdminAnnouncement[]> {
   return rows.map((r) => ({ id: r.id, text: r.text, sortOrder: r.sortOrder }));
 }
 
+export interface AdminSubscriber {
+  id: string;
+  email: string;
+  source: string;
+  createdAt: Date;
+}
+
+/** Latest newsletter sign-ups (newest first) plus the full count. */
+export async function getAdminSubscribers(
+  limit = 100,
+): Promise<{ items: AdminSubscriber[]; total: number }> {
+  const db = await getDb();
+  const [items, rows] = await Promise.all([
+    db
+      .select({
+        id: subscribersTable.id,
+        email: subscribersTable.email,
+        source: subscribersTable.source,
+        createdAt: subscribersTable.createdAt,
+      })
+      .from(subscribersTable)
+      .orderBy(desc(subscribersTable.createdAt))
+      .limit(limit),
+    db.select({ value: count() }).from(subscribersTable),
+  ]);
+  return { items, total: Number(rows[0]?.value ?? 0) };
+}
+
+export interface AdminDiscountCode {
+  id: string;
+  code: string;
+  percentOff: number;
+  active: boolean;
+  maxRedemptions: number | null;
+  redemptionsCount: number;
+  expiresAt: Date | null;
+}
+
+/** All discount codes with their live redemption counters. */
+export async function getAdminDiscountCodes(): Promise<AdminDiscountCode[]> {
+  const db = await getDb();
+  return db
+    .select({
+      id: discountCodesTable.id,
+      code: discountCodesTable.code,
+      percentOff: discountCodesTable.percentOff,
+      active: discountCodesTable.active,
+      maxRedemptions: discountCodesTable.maxRedemptions,
+      redemptionsCount: discountCodesTable.redemptionsCount,
+      expiresAt: discountCodesTable.expiresAt,
+    })
+    .from(discountCodesTable)
+    .orderBy(asc(discountCodesTable.code));
+}
+
 export interface AdminOrderListItem {
   id: string;
   code: string;
@@ -521,6 +578,8 @@ export interface AdminOrderDetail {
   subtotalPence: number;
   deliveryPence: number;
   totalPence: number;
+  discountCode: string | null;
+  discountPence: number | null;
   createdAt: Date;
   updatedAt: Date;
   items: Array<{
@@ -565,6 +624,8 @@ export async function getAdminOrder(
     subtotalPence: row.subtotalPence,
     deliveryPence: row.deliveryPence,
     totalPence: row.totalPence,
+    discountCode: row.discountCode,
+    discountPence: row.discountPence,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
     items: items.map((i) => ({
@@ -593,6 +654,8 @@ export interface OrderConfirmation {
   subtotalPence: number;
   deliveryPence: number;
   totalPence: number;
+  discountCode: string | null;
+  discountPence: number | null;
   createdAt: Date;
   items: Array<{
     slug: string;
@@ -638,6 +701,8 @@ export async function getOrderByCode(
     subtotalPence: row.subtotalPence,
     deliveryPence: row.deliveryPence,
     totalPence: row.totalPence,
+    discountCode: row.discountCode,
+    discountPence: row.discountPence,
     createdAt: row.createdAt,
     items: items.map((i) => ({
       slug: i.slug,

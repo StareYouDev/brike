@@ -11,6 +11,7 @@ import type { AnyPgTable } from "drizzle-orm/pg-core";
 import {
   announcements as announcementsTable,
   collections as collectionsTable,
+  discountCodes,
   productCollections,
   products as productsTable,
   users,
@@ -116,9 +117,22 @@ async function seedAdmin(db: AppDB): Promise<void> {
     .onConflictDoNothing({ target: users.email });
 }
 
-/** Runs once per process: catalog → announcements → admin, empty tables only. */
+/**
+ * The newsletter's 10% code. Insert-if-missing only (not empty-gated): it
+ * must exist on already-populated databases too, and re-runs must never
+ * reset admin edits or the live redemptions_count.
+ */
+async function seedDiscountCodes(db: AppDB): Promise<void> {
+  await db
+    .insert(discountCodes)
+    .values({ code: "WELCOME10", percentOff: 10, active: true })
+    .onConflictDoNothing({ target: discountCodes.code });
+}
+
+/** Runs once per process: catalog → announcements → admin → WELCOME10 code. */
 export async function ensureSeeded(db: AppDB): Promise<void> {
   if (await isEmpty(db, productsTable)) await seedCatalog(db);
   if (await isEmpty(db, announcementsTable)) await seedAnnouncements(db);
   if (await isEmpty(db, users)) await seedAdmin(db);
+  await seedDiscountCodes(db);
 }
