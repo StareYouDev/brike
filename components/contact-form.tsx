@@ -1,11 +1,26 @@
 "use client";
 
 import { useState } from "react";
+import {
+  DEFAULT_CONTACT_COPY,
+  type ContactFormCopy,
+} from "@/lib/form-copy";
 
-const subjects = ["Order question", "Returns & exchanges", "Wholesale", "Press", "Something else"];
-
-export function ContactForm() {
-  const [form, setForm] = useState({ name: "", email: "", subject: subjects[0], message: "" });
+export function ContactForm({
+  settings,
+}: {
+  settings?: Partial<ContactFormCopy>;
+}) {
+  // Admin-managed copy (lib/form-settings) with the shipped defaults beneath.
+  const copy = { ...DEFAULT_CONTACT_COPY, ...settings };
+  const subjects =
+    copy.subjects.length > 0 ? copy.subjects : DEFAULT_CONTACT_COPY.subjects;
+  const [form, setForm] = useState({
+    name: "",
+    email: "",
+    subject: subjects[0],
+    message: "",
+  });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [sent, setSent] = useState(false);
 
@@ -29,10 +44,14 @@ export function ContactForm() {
   if (sent) {
     return (
       <div className="border border-forest/40 bg-forest/5 p-8">
-        <h2 className="font-heading text-h4">Thanks, {form.name.split(" ")[0]}!</h2>
+        <h2 className="font-heading text-h4">
+          {copy.successTitle.replace(
+            "{name}",
+            form.name.trim().split(" ")[0],
+          )}
+        </h2>
         <p className="mt-3 text-[15.5px] text-foreground/80">
-          Your message is ready to send — this is a demo storefront, so nothing left your
-          browser. In the live shop we reply within one working day.
+          {copy.successBody}
         </p>
         <button
           type="button"
@@ -90,11 +109,9 @@ export function ContactForm() {
         type="submit"
         className="w-full bg-ink py-4 text-[13px] font-semibold tracking-[0.16em] text-cream uppercase transition-colors hover:bg-peach-deep hover:text-ink sm:w-auto sm:px-10"
       >
-        Send message
+        {copy.submitLabel}
       </button>
-      <p className="text-[12.5px] text-muted-foreground">
-        Demo form — your details stay in your browser and are never transmitted.
-      </p>
+      <p className="text-[12.5px] text-muted-foreground">{copy.note}</p>
     </form>
   );
 }

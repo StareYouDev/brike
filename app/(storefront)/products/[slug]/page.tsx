@@ -8,15 +8,23 @@ import {
 } from "@/components/colorway-picker";
 import { ProductCard } from "@/components/product-card";
 import { Reveal } from "@/components/reveal";
+import { ReviewForm } from "@/components/review-form";
 import { Stars } from "@/components/stars";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { formatPrice } from "@/data/catalog";
 import {
   getAllCollections,
   getAllProducts,
+  getProductReviews,
   getRelatedProducts,
 } from "@/lib/queries";
 import { productImages } from "@/lib/images";
+
+const reviewDateFormatter = new Intl.DateTimeFormat("en-GB", {
+  day: "numeric",
+  month: "long",
+  year: "numeric",
+});
 
 export async function generateStaticParams() {
   const products = await getAllProducts();
@@ -62,6 +70,17 @@ export default async function ProductPage({
   const onSale = typeof product.compareAt === "number";
   const images = productImages(product);
 
+  const reviews = await getProductReviews(slug);
+  // Merged summary: the seeded baseline (rating + count) plus everything
+  // posted through the review form, so the header matches the list below.
+  const reviewCount = product.reviews + reviews.length;
+  const avgRating =
+    reviewCount > 0
+      ? (product.rating * product.reviews +
+          reviews.reduce((sum, r) => sum + r.rating, 0)) /
+        reviewCount
+      : 0;
+
   return (
     <div className="mx-auto max-w-[1400px] px-6 pt-8 pb-20">
       <Breadcrumb
@@ -90,10 +109,14 @@ export default async function ProductPage({
           <h1 className="mt-2.5 text-balance font-heading text-h1">{product.name}</h1>
 
           <div className="mt-3 flex flex-wrap items-center gap-3">
-            <Stars rating={product.rating} />
-            <span className="text-[13.5px] text-muted-foreground">
-              {product.rating.toFixed(1)} · {product.reviews} reviews
-            </span>
+            <Stars rating={avgRating} />
+            <a
+              href="#reviews"
+              className="text-[13.5px] text-muted-foreground underline underline-offset-2 hover:text-ink"
+            >
+              {avgRating.toFixed(1)} · {reviewCount} review
+              {reviewCount === 1 ? "" : "s"}
+            </a>
           </div>
 
           <div className="mt-5 flex items-baseline gap-3">
@@ -166,6 +189,61 @@ export default async function ProductPage({
           </div>
         </div>
       </ColorwayProvider>
+
+      {/* reviews — seeded baseline + everything posted below */}
+      <section id="reviews" className="mt-20 scroll-mt-40">
+        <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <p className="mb-2.5 flex items-center gap-3 text-[11.5px] font-semibold tracking-[0.2em] text-muted-foreground uppercase">
+              <span className="h-px w-8 bg-line" aria-hidden />
+              Reviews
+            </p>
+            <h2 className="font-heading text-h2">What everyone says</h2>
+          </div>
+          <div className="flex items-center gap-3">
+            <Stars rating={avgRating} />
+            <span className="text-[14px] text-muted-foreground">
+              {avgRating.toFixed(1)} · {reviewCount} review
+              {reviewCount === 1 ? "" : "s"}
+            </span>
+          </div>
+        </div>
+
+        <div className="grid gap-10 lg:grid-cols-[1fr_1.1fr] lg:gap-14">
+          <ReviewForm slug={product.slug} />
+
+          <div>
+            {reviews.length === 0 ? (
+              <div className="flex h-full min-h-40 flex-col items-start justify-center border border-dashed border-border p-6">
+                <p className="font-heading text-h5">No reviews yet</p>
+                <p className="mt-2 text-[14.5px] text-muted-foreground">
+                  Be the first — stars and a line about the fit help everyone
+                  else choose.
+                </p>
+              </div>
+            ) : (
+              <ul className="divide-y divide-border">
+                {reviews.map((review) => (
+                  <li key={review.id} className="py-5 first:pt-0">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <p className="text-[15px] font-medium">{review.author}</p>
+                      <div className="flex items-center gap-3">
+                        <span className="text-[12.5px] text-muted-foreground">
+                          {reviewDateFormatter.format(review.createdAt)}
+                        </span>
+                        <Stars rating={review.rating} />
+                      </div>
+                    </div>
+                    <p className="mt-2 text-[15px] leading-relaxed text-foreground/80">
+                      {review.body}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>
+      </section>
 
       {related.length > 0 ? (
         <section className="mt-20">

@@ -180,6 +180,36 @@ export const rateLimits = pgTable("rate_limits", {
   count: integer("count").notNull().default(0),
 });
 
+/**
+ * Public PDP reviews (stars + comment), submitted through the rate-limited
+ * review action. Deleting a product cascades its reviews away.
+ */
+export const reviews = pgTable(
+  "reviews",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    productId: uuid("product_id")
+      .notNull()
+      .references(() => products.id, { onDelete: "cascade" }),
+    author: text("author").notNull(),
+    rating: integer("rating").notNull(),
+    body: text("body").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [index("reviews_product_created_idx").on(t.productId, t.createdAt)],
+);
+
+/** Key/value JSON settings edited from the admin (form copy, site text…). */
+export const settings = pgTable("settings", {
+  key: text("key").primaryKey(),
+  value: jsonb("value").notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
 /** Every drizzle query in the app runs against this shape (both drivers). */
 export type AppDB = PgliteDatabase<typeof schema>;
 
@@ -193,4 +223,6 @@ export const schema = {
   orderItems,
   loginAttempts,
   rateLimits,
+  reviews,
+  settings,
 };

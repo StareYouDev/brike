@@ -28,6 +28,11 @@ export const LOGIN_QUOTA = {
   ip: { limit: 20, windowSec: 900 },
 } as const;
 
+/** Public PDP review submissions one connection may post per window. */
+export const REVIEW_QUOTA = {
+  ip: { limit: 6, windowSec: 3600 },
+} as const;
+
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 /**

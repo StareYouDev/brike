@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import type { LucideIcon } from "lucide-react";
 import {
   ClipboardList,
+  FileText,
   Layers,
   LayoutDashboard,
   LogOut,
@@ -37,6 +38,7 @@ const NAV_ITEMS: Array<{
   { href: "/admin/collections", label: "Collections", icon: Layers },
   { href: "/admin/announcements", label: "Announcements", icon: Megaphone },
   { href: "/admin/orders", label: "Orders", icon: ClipboardList },
+  { href: "/admin/forms", label: "Forms", icon: FileText },
 ];
 
 /**

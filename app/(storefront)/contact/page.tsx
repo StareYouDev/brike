@@ -4,13 +4,15 @@ import { Breadcrumb } from "@/components/breadcrumb";
 import { ContactForm } from "@/components/contact-form";
 import { Reveal } from "@/components/reveal";
 import { site } from "@/data/catalog";
+import { getFormSettings } from "@/lib/form-settings";
 
 export const metadata: Metadata = {
   title: "Contact & Delivery",
   description: "Get in touch with BRIKE — delivery, returns and customer care.",
 };
 
-export default function ContactPage() {
+export default async function ContactPage() {
+  const copy = await getFormSettings("contact");
   return (
     <div className="mx-auto max-w-[1400px] px-6 pt-8 pb-20">
       <Breadcrumb items={[{ label: "Contact" }]} />
@@ -22,14 +24,13 @@ export default function ContactPage() {
             Say hello
           </p>
           <h1 className="text-balance font-heading text-display-3">
-            We&apos;d love to hear from you
+            {copy.heading}
           </h1>
           <p className="mt-4 max-w-lg text-[16px] text-foreground/80">
-            Questions about sizes, prints or an order? The studio team answers every
-            message within one working day.
+            {copy.intro}
           </p>
           <div className="mt-8">
-            <ContactForm />
+            <ContactForm settings={copy} />
           </div>
         </Reveal>
 

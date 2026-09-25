@@ -321,9 +321,11 @@ test("a failed save keeps the typed edits and the chosen image", async ({
  * Trigger a reorder (key press or drag) and wait for the server action POST
  * to settle. Parallel tests can create/delete a product between our snapshot
  * and the server's full-list check; the action then reports the list changed,
- * the client rolls back and shows the banner — retry a few times so the final
- * order assertions are deterministic. A success settles quietly (no banner
- * within 1.5s) and the transient "Saving order…" indicator disappears.
+ * the client rolls back and shows the banner — reload so the next attempt
+ * sends a fresh snapshot (retrying the stale one would fail until the other
+ * test finishes), then re-run so the final order assertions are
+ * deterministic. A success settles quietly (no banner within 1.5s) and the
+ * transient "Saving order…" indicator disappears.
  */
 async function expectReorderPersisted(
   page: Page,
@@ -343,7 +345,12 @@ async function expectReorderPersisted(
       .waitFor({ state: "visible", timeout: 1500 })
       .then(() => true)
       .catch(() => false);
-    if (stale) continue; // rolled back — re-run with the refreshed list
+    if (stale) {
+      // rolled back — fetch the current list and retry from a clean state
+      await page.reload();
+      await expect(page.locator("tbody tr").first()).toBeVisible();
+      continue;
+    }
     await expect(page.getByText("Saving order…")).toBeHidden();
     return;
   }

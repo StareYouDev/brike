@@ -106,4 +106,18 @@ export const DDL_STATEMENTS: string[] = [
     window_start timestamptz NOT NULL DEFAULT now(),
     count integer NOT NULL DEFAULT 0
   )`,
+  `CREATE TABLE IF NOT EXISTS reviews (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    product_id uuid NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+    author text NOT NULL,
+    rating integer NOT NULL,
+    body text NOT NULL,
+    created_at timestamptz NOT NULL DEFAULT now()
+  )`,
+  `CREATE INDEX IF NOT EXISTS reviews_product_created_idx ON reviews (product_id, created_at)`,
+  `CREATE TABLE IF NOT EXISTS settings (
+    key text PRIMARY KEY,
+    value jsonb NOT NULL,
+    updated_at timestamptz NOT NULL DEFAULT now()
+  )`,
 ];

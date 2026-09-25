@@ -15,6 +15,7 @@ import {
   orders as ordersTable,
   productCollections,
   products as productsTable,
+  reviews as reviewsTable,
 } from "@/lib/db/schema";
 import type { Collection, Colorway, Product } from "@/data/catalog";
 import { normalizeColorways } from "@/data/catalog";
@@ -142,6 +143,36 @@ export async function getAnnouncements(): Promise<string[]> {
     .from(announcementsTable)
     .orderBy(asc(announcementsTable.sortOrder));
   return rows.map((r) => r.text);
+}
+
+/** One PDP review row (public list, newest first). */
+export interface ProductReview {
+  id: string;
+  author: string;
+  rating: number;
+  body: string;
+  createdAt: Date;
+}
+
+/** Latest reviews for a product by slug (joins through products.id). */
+export async function getProductReviews(
+  slug: string,
+  limit = 20,
+): Promise<ProductReview[]> {
+  const db = await getDb();
+  return db
+    .select({
+      id: reviewsTable.id,
+      author: reviewsTable.author,
+      rating: reviewsTable.rating,
+      body: reviewsTable.body,
+      createdAt: reviewsTable.createdAt,
+    })
+    .from(reviewsTable)
+    .innerJoin(productsTable, eq(reviewsTable.productId, productsTable.id))
+    .where(eq(productsTable.slug, slug))
+    .orderBy(desc(reviewsTable.createdAt), desc(reviewsTable.id))
+    .limit(limit);
 }
 
 export async function getProductCount(): Promise<number> {

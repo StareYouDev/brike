@@ -7,6 +7,10 @@ import { Banknote, ShoppingBag } from "lucide-react";
 import { formatPrice } from "@/data/catalog";
 import { placeOrderAction } from "@/lib/actions/checkout";
 import { deliveryPenceFor } from "@/lib/checkout";
+import {
+  DEFAULT_CHECKOUT_COPY,
+  type CheckoutFormCopy,
+} from "@/lib/form-copy";
 import { cartKey, cartSubtotal, useCart } from "@/store/cart";
 
 const field =
@@ -29,7 +33,13 @@ const subscribeNothing = () => () => {};
 const getMounted = () => true;
 const getNotMounted = () => false;
 
-export function CheckoutForm() {
+export function CheckoutForm({
+  settings,
+}: {
+  settings?: Partial<CheckoutFormCopy>;
+}) {
+  // Admin-managed copy (lib/form-settings) with the shipped defaults beneath.
+  const copy = { ...DEFAULT_CHECKOUT_COPY, ...settings };
   const items = useCart((s) => s.items);
   const openCart = useCart((s) => s.open);
   const [state, formAction, pending] = useActionState(placeOrderAction, {});
@@ -109,10 +119,9 @@ export function CheckoutForm() {
 
       <div className="space-y-5">
         <div>
-          <h2 className="font-heading text-h4">Delivery details</h2>
+          <h2 className="font-heading text-h4">{copy.detailsHeading}</h2>
           <p className="mt-1 text-[14px] text-muted-foreground">
-            Cash on delivery — we currently deliver across the UK in 2–4
-            working days.
+            {copy.detailsNote}
           </p>
         </div>
 
@@ -235,19 +244,20 @@ export function CheckoutForm() {
         <div className="border border-ink/25 bg-peach/40 p-4">
           <p className="flex items-center gap-2 text-[13.5px] font-semibold">
             <Banknote size={16} className="text-peach-deep" aria-hidden />
-            Cash on delivery only
+            {copy.payNoteHeading}
           </p>
           <p className="mt-1.5 text-[13.5px] text-ink/75">
-            No card details, no online payment. Have{" "}
-            {formatPrice(totalPence / 100)} ready when the courier arrives —
-            keep it as close to the total as you can.
+            {copy.payNoteBody.replace(
+              "{total}",
+              formatPrice(totalPence / 100),
+            )}
           </p>
         </div>
       </div>
 
       <aside className="border border-border bg-background p-6 lg:sticky lg:top-40 lg:self-start">
         <div className="flex items-center justify-between gap-4">
-          <h2 className="font-heading text-h4">Your basket</h2>
+          <h2 className="font-heading text-h4">{copy.basketHeading}</h2>
           <button
             type="button"
             onClick={openCart}
@@ -314,10 +324,10 @@ export function CheckoutForm() {
         >
           {pending
             ? "Placing order…"
-            : `Place order · ${formatPrice(totalPence / 100)}`}
+            : `${copy.submitLabel} · ${formatPrice(totalPence / 100)}`}
         </button>
         <p className="mt-3 text-[12.5px] text-muted-foreground">
-          You&apos;ll pay the courier in cash — we never ask for card details.
+          {copy.footnote}
         </p>
       </aside>
     </form>
