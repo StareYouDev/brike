@@ -51,6 +51,8 @@ export interface ProductFormInitial {
   featured: boolean;
   sortOrder: number;
   collectionIds: string[];
+  /** Tracked sizes only (blank form field = untracked). */
+  stock: Record<string, number>;
 }
 
 function FieldError({ messages }: { messages?: string[] }) {
@@ -254,6 +256,38 @@ export function ProductForm({
         .filter((s) => !(SIZE_TOKENS as readonly string[]).includes(s))
         .join(", ")
     : "";
+
+  // Sizes + stock are controlled: the stock grid below follows the selection,
+  // and both survive React's post-action form reset on a failed save.
+  const [sizeOn, setSizeOn] = useState<Set<string>>(() => new Set(knownSizes));
+  const [customText, setCustomText] = useState(customSizes);
+  const [stock, setStock] = useState<Record<string, string>>(() =>
+    Object.fromEntries(
+      Object.entries(initial?.stock ?? {}).map(([size, qty]) => [
+        size,
+        String(qty),
+      ]),
+    ),
+  );
+
+  const customList = customText
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const selectedSizes = [
+    ...new Set([...SIZE_TOKENS.filter((size) => sizeOn.has(size)), ...customList]),
+  ];
+
+  const toggleSize = (size: string, on: boolean) =>
+    setSizeOn((prev) => {
+      const next = new Set(prev);
+      if (on) next.add(size);
+      else next.delete(size);
+      return next;
+    });
+
+  const setStockEntry = (size: string, qty: string) =>
+    setStock((prev) => ({ ...prev, [size]: qty }));
 
   const money = (pence: number | null | undefined): string =>
     pence === null || pence === undefined ? "" : (pence / 100).toFixed(2);
@@ -536,7 +570,12 @@ export function ProductForm({
 
       {/* ---- sizes ---- */}
       <section className="space-y-4 rounded-xl bg-card p-5 ring-1 ring-foreground/10">
-        <h2 className="text-base font-medium">Sizes</h2>
+        <div>
+          <h2 className="text-base font-medium">Sizes</h2>
+          <p className="mt-1 text-[11.5px] text-muted-foreground">
+            Tick every size you sell — stock is set per size below.
+          </p>
+        </div>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
           {SIZE_TOKENS.map((size) => (
             <label
@@ -548,7 +587,8 @@ export function ProductForm({
                 id={`size-${size}`}
                 name="sizes"
                 value={size}
-                defaultChecked={knownSizes.includes(size)}
+                checked={sizeOn.has(size)}
+                onCheckedChange={(v) => toggleSize(size, v === true)}
               />
               {size}
             </label>
@@ -559,11 +599,69 @@ export function ProductForm({
           <Input
             id="sizesCustom"
             name="sizesCustom"
-            defaultValue={customSizes}
+            value={customText}
+            onChange={(event) => setCustomText(event.target.value)}
             placeholder="6-7Y, 8-9Y"
           />
           <FieldError messages={state.fieldErrors?.sizes} />
         </div>
+
+        {selectedSizes.length > 0 ? (
+          <div className="space-y-2">
+            <div>
+              <span className="text-[13.5px] font-medium">Stock by size</span>
+              <p className="mt-0.5 text-[11.5px] text-muted-foreground">
+                Units on hand. Leave a size blank if you don&apos;t count it —
+                blank sizes never block checkout. Enter 0 to mark one sold out.
+              </p>
+            </div>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
+              {selectedSizes.map((size) => (
+                <div
+                  key={size}
+                  className="flex items-center gap-2 rounded-md border border-border px-3 py-2"
+                >
+                  <span className="text-[13px] font-semibold text-muted-foreground">
+                    {size}
+                  </span>
+                  <input
+                    type="number"
+                    min={0}
+                    max={999999}
+                    step={1}
+                    aria-label={`${size} stock`}
+                    title={`Units of ${size} on hand — blank = not tracked`}
+                    value={stock[size] ?? ""}
+                    onChange={(event) =>
+                      setStockEntry(size, event.target.value)
+                    }
+                    placeholder="—"
+                    className="w-full min-w-0 bg-transparent text-right text-[13.5px] tabular-nums outline-none placeholder:text-muted-foreground/60"
+                  />
+                </div>
+              ))}
+            </div>
+            <FieldError messages={state.fieldErrors?.stock} />
+          </div>
+        ) : null}
+
+        {/* Serialises only ticked sizes with a non-blank quantity — the
+            server treats absent sizes as untracked. */}
+        <input
+          type="hidden"
+          name="stock"
+          value={JSON.stringify(
+            Object.fromEntries(
+              Object.entries(stock)
+                .filter(
+                  ([size, qty]) =>
+                    qty.trim() !== "" && selectedSizes.includes(size),
+                )
+                .map(([size, qty]) => [size, qty.trim()]),
+            ),
+          )}
+          readOnly
+        />
       </section>
 
       {/* ---- print ---- */}

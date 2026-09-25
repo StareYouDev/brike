@@ -12,7 +12,7 @@ import {
 } from "@/lib/admin-auth";
 import { BADGES, PALETTE_NAMES, PATTERN_TYPES } from "@/lib/admin-form";
 import { getDb } from "@/lib/db";
-import { productCollections, products } from "@/lib/db/schema";
+import { productCollections, products, productStock } from "@/lib/db/schema";
 import { removeImage, uploadImage, UploadError } from "@/lib/uploads";
 
 const lines = (value: string): string[] =>
@@ -178,8 +178,48 @@ const productSchema = z
     featured: z.boolean(),
     imageA: imageRef,
     imageB: imageRef,
+    // Hidden `stock` JSON input: size → qty text. Blank values are stripped
+    // (blank = untracked = never blocks checkout); non-numeric leftovers fail
+    // here with a field error rather than poisoning the table.
+    stock: z.preprocess((value) => {
+      let raw: unknown = value;
+      if (typeof value === "string") {
+        try {
+          raw = JSON.parse(value);
+        } catch {
+          raw = {};
+        }
+      }
+      if (raw === null || typeof raw !== "object" || Array.isArray(raw)) {
+        return {};
+      }
+      const out: Record<string, string> = {};
+      for (const [size, qty] of Object.entries(raw as Record<string, unknown>)) {
+        const text = String(qty ?? "").trim();
+        if (text !== "") out[size.trim()] = text;
+      }
+      return out;
+    }, z.record(z.string().trim().min(1).max(20), z.string().regex(/^\d{1,6}$/, "Whole numbers only."))),
   })
-  .transform((d) => ({ ...d, badge: d.badge === "" ? null : d.badge }));
+  .superRefine((d, ctx) => {
+    // Stock may only exist for sizes the product actually sells.
+    for (const size of Object.keys(d.stock)) {
+      if (!d.sizes.includes(size)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["stock"],
+          message: `Stock is set for ${size}, which isn't a selected size.`,
+        });
+      }
+    }
+  })
+  .transform((d) => ({
+    ...d,
+    badge: d.badge === "" ? null : d.badge,
+    stock: Object.fromEntries(
+      Object.entries(d.stock).map(([size, qty]) => [size, parseInt(qty, 10)]),
+    ),
+  }));
 
 type ParsedProduct = z.infer<typeof productSchema>;
 
@@ -282,6 +322,17 @@ export async function createProductAction(
           })),
         );
       }
+      // Tracked sizes only — a size absent from d.stock stays untracked.
+      const stockEntries = Object.entries(d.stock);
+      if (stockEntries.length > 0) {
+        await tx.insert(productStock).values(
+          stockEntries.map(([size, qty]) => ({
+            productId: row.id,
+            size,
+            qty,
+          })),
+        );
+      }
     });
   } catch (error) {
     await Promise.all(uploaded.map(removeImage)); // no orphan blobs on failure
@@ -325,26 +376,42 @@ export async function updateProductAction(
     const nextImageA = uploadA ?? (d.imageA || null);
     const nextImageB = uploadB ?? (d.imageB || null);
 
-    await db
-      .update(products)
-      .set({
-        ...dbValues(d, nextImageA, nextImageB),
-        updatedAt: new Date(),
-      })
-      .where(eq(products.id, id));
+    // Product fields, collection links and stock replace commit together —
+    // a failed swap can never leave a half-saved product behind.
+    await db.transaction(async (tx) => {
+      await tx
+        .update(products)
+        .set({
+          ...dbValues(d, nextImageA, nextImageB),
+          updatedAt: new Date(),
+        })
+        .where(eq(products.id, id));
 
-    // Swap collection links.
-    await db
-      .delete(productCollections)
-      .where(eq(productCollections.productId, id));
-    if (d.collectionIds.length > 0) {
-      await db.insert(productCollections).values(
-        d.collectionIds.map((collectionId) => ({
-          productId: id,
-          collectionId,
-        })),
-      );
-    }
+      // Swap collection links.
+      await tx
+        .delete(productCollections)
+        .where(eq(productCollections.productId, id));
+      if (d.collectionIds.length > 0) {
+        await tx.insert(productCollections).values(
+          d.collectionIds.map((collectionId) => ({
+            productId: id,
+            collectionId,
+          })),
+        );
+      }
+
+      // Replace tracked stock wholesale: sizes cleared in the form lose
+      // their rows (back to untracked), kept sizes get their new counts.
+      await tx
+        .delete(productStock)
+        .where(eq(productStock.productId, id));
+      const stockEntries = Object.entries(d.stock);
+      if (stockEntries.length > 0) {
+        await tx.insert(productStock).values(
+          stockEntries.map(([size, qty]) => ({ productId: id, size, qty })),
+        );
+      }
+    });
 
     // Clean up replaced/removed blob images (best-effort, post-commit).
     if (existing.imageA && existing.imageA !== nextImageA) {

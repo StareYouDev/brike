@@ -35,6 +35,47 @@ export interface ProductTableRow {
   imageA: string | null;
   imageB: string | null;
   collections: string[];
+  /** Tracked sizes only — empty object means fully untracked. */
+  stock: Record<string, number>;
+}
+
+/** Tracked sizes at or below this count are flagged in the admin table. */
+export const LOW_STOCK_AT = 5;
+
+/** Stock cell: untracked → "—", healthy → unit total, low → flagged. */
+function StockCell({ stock }: { stock: Record<string, number> }) {
+  const entries = Object.entries(stock);
+  if (entries.length === 0) {
+    return (
+      <span className="text-[12px] text-muted-foreground" title="Not tracked">
+        —
+      </span>
+    );
+  }
+  const total = entries.reduce((sum, [, qty]) => sum + qty, 0);
+  const low = entries.filter(([, qty]) => qty <= LOW_STOCK_AT);
+  const detail = entries
+    .map(([size, qty]) => `${size}: ${qty}`)
+    .join(" · ");
+  if (total === 0) {
+    return (
+      <span className="text-[12.5px] font-semibold text-sale" title={detail}>
+        Sold out
+      </span>
+    );
+  }
+  if (low.length > 0) {
+    return (
+      <span className="text-[12.5px] font-semibold text-sale" title={detail}>
+        {total} (low)
+      </span>
+    );
+  }
+  return (
+    <span className="tabular-nums text-[12.5px]" title={detail}>
+      {total}
+    </span>
+  );
 }
 
 const orderKey = (rows: ProductTableRow[]) =>
@@ -166,6 +207,7 @@ export function ProductsTable({
               <TableHead className="w-16">Image</TableHead>
               <TableHead>Product</TableHead>
               <TableHead className="text-right">Price</TableHead>
+              <TableHead className="text-right">Stock</TableHead>
               <TableHead>Badge</TableHead>
               <TableHead>Collections</TableHead>
               <TableHead className="text-center">Featured</TableHead>
@@ -290,6 +332,9 @@ export function ProductsTable({
                         {formatPrice(product.compareAtPence / 100)}
                       </p>
                     ) : null}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <StockCell stock={product.stock} />
                   </TableCell>
                   <TableCell>
                     {product.badge ? (

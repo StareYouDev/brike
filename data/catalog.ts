@@ -130,6 +130,11 @@ export interface Product {
   imageA?: string;
   /** Uploaded override; falls back to /prints/<slug>-b.svg when absent. */
   imageB?: string;
+  /**
+   * Per-size stock counts (tracked sizes only). A size missing here is
+   * untracked: it never blocks checkout.
+   */
+  stock?: Record<string, number>;
 }
 
 export interface Collection {

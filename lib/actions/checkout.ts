@@ -2,13 +2,18 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { inArray } from "drizzle-orm";
+import { and, eq, gte, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
 import { normalizeColorways } from "@/data/catalog";
 import { isDuplicateKeyError, type ActionState } from "@/lib/admin-auth";
 import { deliveryPenceFor, newOrderCode } from "@/lib/checkout";
 import { getDb } from "@/lib/db";
-import { orderItems, orders, products } from "@/lib/db/schema";
+import {
+  orderItems,
+  orders,
+  products,
+  productStock,
+} from "@/lib/db/schema";
 import { productImages } from "@/lib/images";
 import { orderQuotaError } from "@/lib/rate-limit";
 import { clientIp } from "@/lib/request-ip";
@@ -32,6 +37,22 @@ const basketLine = z.object({
   colorway: z.string().min(1).max(80),
   qty: z.number().int().min(1).max(10),
 });
+
+/**
+ * Raised inside the checkout transaction when a guarded stock decrement
+ * finds the last unit already claimed by a concurrent checkout. The whole
+ * order rolls back; the friendly message is surfaced to the customer.
+ * Module-local on purpose — "use server" files may only export async
+ * functions.
+ */
+class InsufficientStockError extends Error {}
+
+/** User-facing stock rejection: sold out vs. not enough for the quantity. */
+function stockError(name: string, size: string, available: number): string {
+  return available === 0
+    ? `${name} in size ${size} is sold out.`
+    : `Only ${available} left of ${name} (size ${size}).`;
+}
 
 const contact = z.object({
   email: z.string().trim().toLowerCase().email().max(200),
@@ -104,6 +125,25 @@ export async function placeOrderAction(
     .where(inArray(products.slug, slugs));
   const bySlug = new Map(rows.map((row) => [row.slug, row]));
 
+  // Tracked sizes only — a missing row means untracked (never blocks).
+  const stockRows =
+    rows.length === 0
+      ? []
+      : await db
+          .select()
+          .from(productStock)
+          .where(
+            inArray(
+              productStock.productId,
+              rows.map((row) => row.id),
+            ),
+          );
+  const stockKey = (productId: string, size: string) =>
+    `${productId} ${size}`;
+  const stockNow = new Map(
+    stockRows.map((row) => [stockKey(row.productId, row.size), row.qty]),
+  );
+
   for (const line of basket) {
     const product = bySlug.get(line.slug);
     if (!product) {
@@ -119,6 +159,12 @@ export async function placeOrderAction(
       return {
         error: `${product.name} has no colourway called ${line.colorway}.`,
       };
+    }
+    // Stock pre-check for a clear message; the transaction re-enforces it
+    // atomically so two simultaneous checkouts can't both take the last unit.
+    const available = stockNow.get(stockKey(product.id, line.size));
+    if (available !== undefined && available < line.qty) {
+      return { error: stockError(product.name, line.size, available) };
     }
   }
 
@@ -176,6 +222,30 @@ export async function placeOrderAction(
     orderCode = newOrderCode();
     try {
       await db.transaction(async (tx) => {
+        // Take the stock first: sizes without a row are untracked and skip
+        // the guard entirely. gte(…) makes each decrement atomic — if the
+        // last unit went to a concurrent checkout, this throws and the
+        // whole order rolls back.
+        for (const line of basket) {
+          const product = bySlug.get(line.slug)!;
+          if (!stockNow.has(stockKey(product.id, line.size))) continue;
+          const [decremented] = await tx
+            .update(productStock)
+            .set({ qty: sql`${productStock.qty} - ${line.qty}` })
+            .where(
+              and(
+                eq(productStock.productId, product.id),
+                eq(productStock.size, line.size),
+                gte(productStock.qty, line.qty),
+              ),
+            )
+            .returning({ qty: productStock.qty });
+          if (!decremented) {
+            throw new InsufficientStockError(
+              `${product.name} in size ${line.size} just sold out — please adjust your basket.`,
+            );
+          }
+        }
         const [row] = await tx
           .insert(orders)
           .values({ code: orderCode, ...order })
@@ -186,6 +256,11 @@ export async function placeOrderAction(
       });
       placed = true;
     } catch (error) {
+      // Lost the stock race between pre-check and commit — the transaction
+      // already rolled back, so just tell the customer what happened.
+      if (error instanceof InsufficientStockError) {
+        return { error: error.message };
+      }
       // A code collision is astronomically unlikely but retried with a fresh
       // code; anything else surfaces to the customer as a retryable error.
       if (!(attempt < 2 && isDuplicateKeyError(error))) {

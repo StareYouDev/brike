@@ -15,6 +15,7 @@ import {
   orders as ordersTable,
   productCollections,
   products as productsTable,
+  productStock as productStockTable,
   reviews as reviewsTable,
 } from "@/lib/db/schema";
 import type { Collection, Colorway, Product } from "@/data/catalog";
@@ -72,13 +73,14 @@ function toCollection(row: typeof collectionsTable.$inferSelect): Collection {
 
 export async function getAllProducts(): Promise<Product[]> {
   const db = await getDb();
-  const [rows, links, cols] = await Promise.all([
+  const [rows, links, cols, stockRows] = await Promise.all([
     db
       .select()
       .from(productsTable)
       .orderBy(asc(productsTable.sortOrder), asc(productsTable.name)),
     db.select().from(productCollections),
     db.select().from(collectionsTable),
+    db.select().from(productStockTable),
   ]);
   const slugById = new Map(cols.map((c) => [c.id, c.slug]));
   const collectionSlugsByProduct = new Map<string, string[]>();
@@ -89,7 +91,26 @@ export async function getAllProducts(): Promise<Product[]> {
     list.push(slug);
     collectionSlugsByProduct.set(link.productId, list);
   }
-  return rows.map((row) => toProduct(row, collectionSlugsByProduct.get(row.id) ?? []));
+  const stockByProduct = stockMap(stockRows);
+  return rows.map((row) => {
+    const product = toProduct(row, collectionSlugsByProduct.get(row.id) ?? []);
+    const stock = stockByProduct.get(row.id);
+    // Only attach when something is tracked — an absent key means untracked.
+    return stock ? { ...product, stock } : product;
+  });
+}
+
+/** product_id → { size: qty } from raw product_stock rows. */
+function stockMap(
+  rows: Array<{ productId: string; size: string; qty: number }>,
+): Map<string, Record<string, number>> {
+  const map = new Map<string, Record<string, number>>();
+  for (const row of rows) {
+    const record = map.get(row.productId) ?? {};
+    record[row.size] = row.qty;
+    map.set(row.productId, record);
+  }
+  return map;
 }
 
 export async function getProductBySlug(slug: string): Promise<Product | undefined> {
@@ -254,6 +275,8 @@ export interface AdminProductListItem {
   imageA: string | null;
   imageB: string | null;
   collections: string[];
+  /** Tracked sizes only — empty object means fully untracked. */
+  stock: Record<string, number>;
   updatedAt: Date;
 }
 
@@ -285,7 +308,7 @@ export async function getAdminProducts(
         ilike(productsTable.slug, `%${q}%`),
       )
     : undefined;
-  const [rows, links, cols] = await Promise.all([
+  const [rows, links, cols, stockRows] = await Promise.all([
     db
       .select()
       .from(productsTable)
@@ -293,6 +316,7 @@ export async function getAdminProducts(
       .orderBy(asc(productsTable.sortOrder), asc(productsTable.name)),
     db.select().from(productCollections),
     db.select().from(collectionsTable),
+    db.select().from(productStockTable),
   ]);
   const slugById = new Map(cols.map((c) => [c.id, c.slug]));
   const byProduct = new Map<string, string[]>();
@@ -303,6 +327,7 @@ export async function getAdminProducts(
     list.push(slug);
     byProduct.set(link.productId, list);
   }
+  const stockByProduct = stockMap(stockRows);
   return rows.map((row) => ({
     id: row.id,
     slug: row.slug,
@@ -315,6 +340,7 @@ export async function getAdminProducts(
     imageA: row.imageA,
     imageB: row.imageB,
     collections: byProduct.get(row.id) ?? [],
+    stock: stockByProduct.get(row.id) ?? {},
     updatedAt: row.updatedAt,
   }));
 }
@@ -330,10 +356,13 @@ export async function getAdminProduct(
     .where(eq(productsTable.id, id))
     .limit(1);
   if (!row) return null;
-  const links = await db
-    .select()
-    .from(productCollections)
-    .where(eq(productCollections.productId, id));
+  const [links, stockRows] = await Promise.all([
+    db
+      .select()
+      .from(productCollections)
+      .where(eq(productCollections.productId, id)),
+    db.select().from(productStockTable).where(eq(productStockTable.productId, id)),
+  ]);
   return {
     id: row.id,
     slug: row.slug,
@@ -351,6 +380,7 @@ export async function getAdminProduct(
     details: row.details,
     colorways: normalizeColorways(row.colorways),
     sizes: row.sizes,
+    stock: stockMap(stockRows).get(id) ?? {},
     printType: row.printType,
     printA: row.printA,
     printB: row.printB,

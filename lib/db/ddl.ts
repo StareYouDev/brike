@@ -49,6 +49,12 @@ export const DDL_STATEMENTS: string[] = [
     created_at timestamptz NOT NULL DEFAULT now(),
     updated_at timestamptz NOT NULL DEFAULT now()
   )`,
+  `CREATE TABLE IF NOT EXISTS product_stock (
+    product_id uuid NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+    size text NOT NULL,
+    qty integer NOT NULL,
+    PRIMARY KEY (product_id, size)
+  )`,
   `CREATE TABLE IF NOT EXISTS product_collections (
     product_id uuid NOT NULL REFERENCES products(id) ON DELETE CASCADE,
     collection_id uuid NOT NULL REFERENCES collections(id) ON DELETE CASCADE,

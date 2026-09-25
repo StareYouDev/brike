@@ -20,11 +20,22 @@ export function AddToCart({ product }: { product: Product }) {
   const images = productImages(product);
   const image = images[selected?.image === "b" ? "b" : "a"];
 
+  // Tracked sizes only — a size missing from product.stock never blocks.
+  const stockOf = (s: string | null): number | undefined =>
+    s === null ? undefined : product.stock?.[s];
+  const maxFor = (s: string | null): number => {
+    const stock = stockOf(s);
+    return stock === undefined ? 10 : Math.max(1, Math.min(10, stock));
+  };
+
   const add = () => {
     if (!size) {
       setError(true);
       return;
     }
+    // Stale selection (stock ran out after this page rendered): the sold-out
+    // note below is already visible, so just refuse quietly.
+    if (stockOf(size) === 0) return;
     setError(false);
     addItem(
       {
@@ -35,7 +46,9 @@ export function AddToCart({ product }: { product: Product }) {
         colorway: selected?.name ?? product.name,
         image,
       },
-      qty,
+      // Never hand the cart more than the tracked stock allows; checkout
+      // re-validates server-side anyway.
+      Math.min(qty, maxFor(size)),
     );
   };
 
@@ -88,26 +101,54 @@ export function AddToCart({ product }: { product: Product }) {
           </Link>
         </div>
         <div className="flex flex-wrap gap-2">
-          {product.sizes.map((s) => (
-            <button
-              key={s}
-              type="button"
-              aria-pressed={size === s}
-              onClick={() => {
-                setSize(s);
-                setError(false);
-              }}
-              className={cn(
-                "min-w-12 border px-3.5 py-2.5 text-[14px] transition-all",
-                size === s
-                  ? "border-ink bg-ink text-cream"
-                  : "border-input hover:border-ink",
-              )}
-            >
-              {s}
-            </button>
-          ))}
+          {product.sizes.map((s) => {
+            const stock = stockOf(s);
+            const soldOut = stock === 0;
+            return (
+              <button
+                key={s}
+                type="button"
+                disabled={soldOut}
+                aria-pressed={size === s}
+                title={soldOut ? `${s} — sold out` : undefined}
+                onClick={() => {
+                  setSize(s);
+                  setError(false);
+                }}
+                className={cn(
+                  "min-w-12 border px-3.5 py-2.5 text-[14px] transition-all",
+                  soldOut
+                    ? "cursor-not-allowed border-input text-muted-foreground/50 line-through"
+                    : size === s
+                      ? "border-ink bg-ink text-cream"
+                      : "border-input hover:border-ink",
+                )}
+              >
+                {s}
+              </button>
+            );
+          })}
         </div>
+        {(() => {
+          if (!size) return null;
+          const stock = product.stock?.[size];
+          if (stock === undefined) return null;
+          if (stock === 0) {
+            return (
+              <p role="status" className="mt-2 text-[13px] text-sale">
+                {size} is sold out — pick another size.
+              </p>
+            );
+          }
+          if (stock <= 5) {
+            return (
+              <p role="status" className="mt-2 text-[13px] text-sale">
+                Only {stock} left in {size} — going fast.
+              </p>
+            );
+          }
+          return null;
+        })()}
         {error ? (
           <p role="alert" className="mt-2 text-[13px] text-sale">
             Please choose a size.
@@ -126,11 +167,15 @@ export function AddToCart({ product }: { product: Product }) {
           >
             −
           </button>
-          <span className="min-w-8 text-center text-[15px]">{qty}</span>
+          <span className="min-w-8 text-center text-[15px]">
+            {Math.min(qty, maxFor(size))}
+          </span>
           <button
             type="button"
             aria-label="Increase quantity"
-            onClick={() => setQty((q) => Math.min(10, q + 1))}
+            onClick={() =>
+              setQty((q) => Math.min(maxFor(size), Math.min(10, q + 1)))
+            }
             className="px-3.5 py-3.5 text-lg hover:bg-meta"
           >
             +
@@ -139,10 +184,11 @@ export function AddToCart({ product }: { product: Product }) {
         <button
           type="button"
           onClick={add}
-          className="group flex flex-1 items-center justify-center gap-2.5 bg-ink py-3.5 text-[13px] font-semibold tracking-[0.16em] text-cream uppercase transition-colors hover:bg-peach-deep hover:text-ink"
+          disabled={stockOf(size) === 0}
+          className="group flex flex-1 items-center justify-center gap-2.5 bg-ink py-3.5 text-[13px] font-semibold tracking-[0.16em] text-cream uppercase transition-colors hover:bg-peach-deep hover:text-ink disabled:cursor-not-allowed disabled:bg-muted-foreground/40"
         >
           <ShoppingBag size={16} className="transition-transform group-hover:scale-110" />
-          Add to basket · {formatPrice(product.price * qty)}
+          Add to basket · {formatPrice(product.price * Math.min(qty, maxFor(size)))}
         </button>
       </div>
 

@@ -33,6 +33,12 @@ async function fillProductBasics(page: Page, name: string, slug: string) {
     .fill("Automated test detail line\nSecond detail line");
   await page.getByLabel("Colour 1 name").fill("Ink multi");
   await page.getByLabel("M", { exact: true }).check();
+  // Existing static art — a fresh slug's generated /prints/<slug>-a.svg
+  // doesn't exist, and a broken image trips the homepage console-error test
+  // when this product renders there in parallel. (Uploads override this.)
+  await page
+    .getByLabel("Image A (main)", { exact: true })
+    .fill("/prints/hero.svg");
   // Tick the STABLE "New In" collection by name — never .first(): a parallel
   // test's temporary collection can sort first and then get deleted before
   // this form submits (FK violation).

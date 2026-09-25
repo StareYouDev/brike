@@ -77,6 +77,23 @@ export const products = pgTable("products", {
     .defaultNow(),
 });
 
+/**
+ * Per-size stock. A missing row means the size is *untracked* — it never
+ * blocks checkout (the honest default until real counts are entered).
+ * Row present + qty 0 = sold out everywhere.
+ */
+export const productStock = pgTable(
+  "product_stock",
+  {
+    productId: uuid("product_id")
+      .notNull()
+      .references(() => products.id, { onDelete: "cascade" }),
+    size: text("size").notNull(),
+    qty: integer("qty").notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.productId, t.size] })],
+);
+
 export const productCollections = pgTable(
   "product_collections",
   {
@@ -217,6 +234,7 @@ export const schema = {
   users,
   collections,
   products,
+  productStock,
   productCollections,
   announcements,
   orders,
