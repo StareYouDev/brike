@@ -152,6 +152,22 @@ export function MobileMenu({ count, onNavigate, onSearch, onCart }: MobileMenuPr
               <ChevronRight size={15} strokeWidth={1.8} aria-hidden className="text-peach-deep" />
             </Link>
           </li>
+          {[
+            { label: "Returns & refunds", href: "/returns" },
+            { label: "Privacy policy", href: "/privacy" },
+            { label: "Terms of sale", href: "/terms" },
+          ].map((l) => (
+            <li key={l.href}>
+              <Link
+                href={l.href}
+                onClick={onNavigate}
+                className="flex min-h-11 items-center justify-between text-[14.5px] font-medium transition-colors hover:text-peach-deep"
+              >
+                {l.label}
+                <ChevronRight size={15} strokeWidth={1.8} aria-hidden className="text-peach-deep" />
+              </Link>
+            </li>
+          ))}
         </ul>
         <p className="flex items-center gap-2 border-t border-ink/10 pt-3 text-[13px] text-ink/70">
           <Truck size={15} strokeWidth={1.7} aria-hidden className="shrink-0" />

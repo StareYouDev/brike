@@ -114,11 +114,29 @@ export async function SiteFooter() {
           <p>
             © {new Date().getFullYear()} {site.name} · Registered in England &amp; Wales
           </p>
-          <p className="flex flex-wrap gap-x-5 gap-y-1">
-            <span>{site.email}</span>
-            <span>{site.phone}</span>
-            <span>Visa · Mastercard · Amex · PayPal</span>
-          </p>
+          <div className="flex flex-col gap-2 md:items-end">
+            <nav
+              aria-label="Legal"
+              className="flex flex-wrap gap-x-5 gap-y-1"
+            >
+              <Link href="/returns" className="transition-opacity hover:opacity-60">
+                Returns &amp; refunds
+              </Link>
+              <Link href="/privacy" className="transition-opacity hover:opacity-60">
+                Privacy policy
+              </Link>
+              <Link href="/terms" className="transition-opacity hover:opacity-60">
+                Terms of sale
+              </Link>
+            </nav>
+            <p className="flex flex-wrap gap-x-5 gap-y-1">
+              <span>{site.email}</span>
+              <span>{site.phone}</span>
+              <span>
+                Cash on delivery · Free UK delivery over £{site.freeShippingThreshold}
+              </span>
+            </p>
+          </div>
         </div>
       </div>
     </footer>
